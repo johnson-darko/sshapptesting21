@@ -63,7 +63,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const sshKey = await storage.createSSHKey({
         ...data,
-        keyType: keyInfo.keyType
+        keyType: keyInfo.keyType,
+        fingerprint: keyInfo.fingerprint
       });
       
       res.json(sshKey);

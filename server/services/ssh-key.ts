@@ -1,4 +1,5 @@
 import { Client } from 'ssh2';
+import { createHash } from 'crypto';
 import { storage } from '../storage';
 import { SSHConnection, SSHKey } from '@shared/schema';
 
@@ -16,20 +17,39 @@ export class SSHKeyService {
    */
   parsePublicKey(publicKeyContent: string): { keyType: string; fingerprint: string } | null {
     try {
-      const parts = publicKeyContent.trim().split(' ');
+      const trimmed = publicKeyContent.trim();
+      const parts = trimmed.split(/\s+/);
+      
+      // SSH public keys should have at least 2 parts: type and data
       if (parts.length < 2) {
-        throw new Error('Invalid public key format');
+        return null;
       }
 
-      const keyType = parts[0].replace('ssh-', '');
+      const keyTypePrefix = parts[0];
       const keyData = parts[1];
       
-      // Validate base64 encoding
-      Buffer.from(keyData, 'base64');
+      // Validate key type prefix
+      const validKeyTypes = ['ssh-rsa', 'ssh-ed25519', 'ssh-dss', 'ecdsa-sha2-nistp256', 'ecdsa-sha2-nistp384', 'ecdsa-sha2-nistp521'];
+      if (!validKeyTypes.includes(keyTypePrefix)) {
+        return null;
+      }
+
+      // Extract key type without ssh- prefix
+      const keyType = keyTypePrefix.replace('ssh-', '').replace('ecdsa-sha2-', 'ecdsa-');
+      
+      // Basic validation of key data
+      if (!keyData || keyData.length === 0) {
+        return null;
+      }
+      
+      // Simple base64 validation - just check if it looks like base64
+      if (!/^[A-Za-z0-9+/]+=*$/.test(keyData)) {
+        return null;
+      }
       
       return {
         keyType,
-        fingerprint: this.generateFingerprint(publicKeyContent)
+        fingerprint: this.generateFingerprint(trimmed)
       };
     } catch (error) {
       return null;
@@ -40,10 +60,24 @@ export class SSHKeyService {
    * Generate SSH key fingerprint (SHA256)
    */
   private generateFingerprint(publicKey: string): string {
-    const crypto = require('crypto');
-    const keyData = publicKey.split(' ')[1] || publicKey;
-    const hash = crypto.createHash('sha256').update(keyData, 'base64').digest('base64');
-    return `SHA256:${hash}`;
+    try {
+      const parts = publicKey.trim().split(/\s+/);
+      const keyData = parts[1];
+      
+      if (!keyData) {
+        throw new Error('No key data found for fingerprint generation');
+      }
+      
+      // Decode the base64 key data and generate SHA256 hash
+      const keyBuffer = Buffer.from(keyData, 'base64');
+      const hash = createHash('sha256').update(keyBuffer).digest('base64');
+      return `SHA256:${hash}`;
+    } catch (error) {
+      console.error('Fingerprint generation error:', error.message);
+      // Fallback fingerprint using simple hash
+      const simpleHash = createHash('sha256').update(publicKey).digest('hex').substring(0, 16);
+      return `SHA256:${simpleHash}`;
+    }
   }
 
   /**
