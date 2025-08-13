@@ -27,7 +27,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connections = await storage.getSSHConnections();
       res.json(connections);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -37,7 +37,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connection = await storage.createSSHConnection(data);
       res.json(connection);
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -47,7 +47,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const keys = await storage.getSSHKeys();
       res.json(keys);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -64,12 +64,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sshKey = await storage.createSSHKey({
         ...data,
         keyType: keyInfo.keyType,
-        fingerprint: keyInfo.fingerprint
       });
       
       res.json(sshKey);
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -79,17 +78,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteSSHKey(id);
       res.json({ success: true });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
   app.post('/api/ssh-connections/test', async (req, res) => {
     try {
       const data = insertSSHConnectionSchema.parse(req.body);
-      const isValid = await sshKeyService.testConnectionWithKeys(data);
+      const testConnection: SSHConnection = {
+        ...data,
+        id: '',
+        userId: null,
+        port: data.port ?? 22,
+        isActive: false,
+        createdAt: new Date(),
+      };
+      const isValid = await sshKeyService.testConnectionWithKeys(testConnection);
       res.json({ valid: isValid });
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -110,7 +117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(500).json({ error: 'Failed to connect' });
       }
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -121,7 +128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateSSHConnectionStatus(id, false);
       res.json({ success: true });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -137,7 +144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await aiService.generateCommand(plainText);
       res.json(result);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -147,7 +154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = aiService.getQuickAction(action);
       res.json(result);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -158,7 +165,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const command = await storage.createCommand(data);
       res.json(command);
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -181,7 +188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       try {
         const result = await sshKeyService.executeCommand(
-          command.connectionId,
+          command.connectionId!,
           command.generatedCommand,
           (data) => {
             // Stream output to WebSocket clients
@@ -227,10 +234,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }));
         });
 
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
       }
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -241,7 +248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const commands = await storage.getCommands(connectionId as string);
       res.json(commands);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -251,7 +258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.clearCommandHistory(connectionId as string);
       res.json({ success: true });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 

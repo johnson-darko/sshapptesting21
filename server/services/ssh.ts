@@ -11,10 +11,10 @@ export interface SSHExecutionResult {
 export class SSHService {
   private connections: Map<string, Client> = new Map();
 
-  async connect(connection: SSHConnection): Promise<boolean> {
+  async connect(connection: SSHConnection, privateKeyPath: string): Promise<boolean> {
     try {
       const client = new Client();
-      const privateKey = await fs.readFile(connection.keyPath);
+      const privateKey = await fs.readFile(privateKeyPath);
 
       return new Promise((resolve, reject) => {
         client.on('ready', () => {
@@ -28,14 +28,13 @@ export class SSHService {
 
         client.connect({
           host: connection.host,
-          port: connection.port,
+          port: connection.port || 22,
           username: connection.username,
           privateKey,
-          passphrase: connection.passphrase || undefined,
         });
       });
     } catch (error) {
-      throw new Error(`Failed to connect to SSH server: ${error.message}`);
+      throw new Error(`Failed to connect to SSH server: ${(error as Error).message}`);
     }
   }
 
@@ -60,7 +59,7 @@ export class SSHService {
         }
 
         stream.on('close', (code: number) => {
-          exitCode = code;
+          exitCode = code || 0;
           resolve({ output, exitCode });
         });
 
@@ -83,10 +82,10 @@ export class SSHService {
     });
   }
 
-  async testConnection(connection: Omit<SSHConnection, 'id' | 'userId' | 'isActive' | 'createdAt'>): Promise<boolean> {
+  async testConnection(connection: Omit<SSHConnection, 'id' | 'userId' | 'isActive' | 'createdAt'>, privateKeyPath: string): Promise<boolean> {
     try {
       const client = new Client();
-      const privateKey = await fs.readFile(connection.keyPath);
+      const privateKey = await fs.readFile(privateKeyPath);
 
       return new Promise((resolve) => {
         const timeout = setTimeout(() => {
@@ -107,10 +106,9 @@ export class SSHService {
 
         client.connect({
           host: connection.host,
-          port: connection.port,
+          port: connection.port || 22,
           username: connection.username,
           privateKey,
-          passphrase: connection.passphrase || undefined,
         });
       });
     } catch {

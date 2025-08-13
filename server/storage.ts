@@ -77,6 +77,7 @@ export class MemStorage implements IStorage {
       ...insertConnection,
       id,
       userId: null,
+      port: insertConnection.port ?? 22,
       isActive: false,
       createdAt: new Date(),
     };
@@ -92,12 +93,12 @@ export class MemStorage implements IStorage {
     return this.sshKeys.get(id);
   }
 
-  async createSSHKey(insertSSHKey: InsertSSHKey): Promise<SSHKey> {
+  async createSSHKey(insertSSHKey: InsertSSHKey & { keyType?: string }): Promise<SSHKey> {
     const id = randomUUID();
     const fingerprint = generateFingerprint(insertSSHKey.publicKey);
     
-    // Extract key type from public key (e.g., "ssh-rsa", "ssh-ed25519")
-    const keyType = insertSSHKey.publicKey.split(' ')[0]?.replace('ssh-', '') || 'rsa';
+    // Extract key type from public key (e.g., "ssh-rsa", "ssh-ed25519") or use provided
+    const keyType = insertSSHKey.keyType || insertSSHKey.publicKey.split(' ')[0]?.replace('ssh-', '') || 'rsa';
     
     const sshKey: SSHKey = {
       ...insertSSHKey,
@@ -105,7 +106,7 @@ export class MemStorage implements IStorage {
       userId: null,
       fingerprint,
       keyType,
-      isActive: true,
+      isActive: insertSSHKey.isActive ?? true,
       lastUsed: null,
       createdAt: new Date(),
     };
@@ -132,7 +133,7 @@ export class MemStorage implements IStorage {
     if (connection) {
       // Set all connections to inactive first
       if (isActive) {
-        for (const [connId, conn] of this.sshConnections) {
+        for (const [connId, conn] of this.sshConnections.entries()) {
           this.sshConnections.set(connId, { ...conn, isActive: false });
         }
       }
@@ -158,6 +159,7 @@ export class MemStorage implements IStorage {
     const command: Command = {
       ...insertCommand,
       id,
+      connectionId: insertCommand.connectionId ?? null,
       output: null,
       exitCode: null,
       status: 'pending',
@@ -189,7 +191,7 @@ export class MemStorage implements IStorage {
 
   async clearCommandHistory(connectionId?: string): Promise<void> {
     if (connectionId) {
-      for (const [id, command] of this.commands) {
+      for (const [id, command] of this.commands.entries()) {
         if (command.connectionId === connectionId) {
           this.commands.delete(id);
         }

@@ -54,7 +54,7 @@ Respond with JSON in this exact format:
         requiresConfirmation: result.requiresConfirmation || false,
       };
     } catch (error) {
-      throw new Error(`Failed to generate command: ${error.message}`);
+      throw new Error(`Failed to generate command: ${(error as Error).message}`);
     }
   }
 
@@ -76,7 +76,7 @@ Provide a clear, actionable explanation of what went wrong and how to fix it.`;
 
       return response.choices[0].message.content || 'Unable to analyze error';
     } catch (error) {
-      return `Error analysis failed: ${error.message}`;
+      return `Error analysis failed: ${(error as Error).message}`;
     }
   }
 
