@@ -1,6 +1,16 @@
 // Quick Actions service for categorized command templates
 import { QuickActionCommand, QuickActionSection, QuickActionCategory, UserInput } from "@shared/quick-actions";
 
+// Helper function to create OS-aware package installation commands
+const createOSAwareInstallCommand = (packageName: string, aptPackage?: string, yumPackage?: string, dnfPackage?: string, pacmanPackage?: string): string => {
+  const apt = aptPackage || packageName;
+  const yum = yumPackage || packageName;
+  const dnf = dnfPackage || packageName;
+  const pacman = pacmanPackage || packageName;
+  
+  return `if command -v apt >/dev/null 2>&1; then sudo apt update && sudo apt install ${apt} -y; elif command -v yum >/dev/null 2>&1; then sudo yum install ${yum} -y; elif command -v dnf >/dev/null 2>&1; then sudo dnf install ${dnf} -y; elif command -v pacman >/dev/null 2>&1; then sudo pacman -S ${pacman} --noconfirm; else echo "Package manager not detected. Please install ${packageName} manually."; fi`;
+};
+
 export class QuickActionsService {
   private categories: QuickActionCategory[] = [
     {
@@ -17,8 +27,8 @@ export class QuickActionsService {
             {
               id: 'install-docker',
               buttonText: 'Install Docker',
-              explanation: 'Installs Docker on your Linux server',
-              terminalCommand: 'sudo yum install docker -y',
+              explanation: 'Installs Docker on your Linux server (auto-detects OS)',
+              terminalCommand: createOSAwareInstallCommand('docker', 'docker.io', 'docker', 'docker', 'docker'),
               riskLevel: 'medium'
             },
             {
@@ -329,6 +339,98 @@ export class QuickActionsService {
       ]
     },
     {
+      id: 'development-tools',
+      name: 'DEVELOPMENT TOOLS INSTALLATION',
+      description: 'Install essential development tools and programming languages',
+      icon: '🛠️',
+      sections: [
+        {
+          id: 'programming-languages',
+          name: 'Programming Languages',
+          description: 'Install popular programming languages and runtimes',
+          commands: [
+            {
+              id: 'install-nodejs',
+              buttonText: 'Install Node.js',
+              explanation: 'Installs Node.js runtime and npm package manager (auto-detects OS)',
+              terminalCommand: createOSAwareInstallCommand('nodejs', 'nodejs npm', 'nodejs npm', 'nodejs npm', 'nodejs npm'),
+              riskLevel: 'medium'
+            },
+            {
+              id: 'install-python',
+              buttonText: 'Install Python 3',
+              explanation: 'Installs Python 3 and pip package manager (auto-detects OS)',
+              terminalCommand: createOSAwareInstallCommand('python3', 'python3 python3-pip', 'python3 python3-pip', 'python3 python3-pip', 'python python-pip'),
+              riskLevel: 'medium'
+            },
+            {
+              id: 'install-git',
+              buttonText: 'Install Git',
+              explanation: 'Installs Git version control system (auto-detects OS)',
+              terminalCommand: createOSAwareInstallCommand('git', 'git', 'git', 'git', 'git'),
+              riskLevel: 'medium'
+            },
+            {
+              id: 'install-curl',
+              buttonText: 'Install curl',
+              explanation: 'Installs curl for HTTP requests and downloads (auto-detects OS)',
+              terminalCommand: createOSAwareInstallCommand('curl', 'curl', 'curl', 'curl', 'curl'),
+              riskLevel: 'low'
+            }
+          ]
+        },
+        {
+          id: 'database-tools',
+          name: 'Database Tools',
+          description: 'Install database servers and clients',
+          commands: [
+            {
+              id: 'install-postgresql',
+              buttonText: 'Install PostgreSQL',
+              explanation: 'Installs PostgreSQL database server (auto-detects OS)',
+              terminalCommand: createOSAwareInstallCommand('postgresql', 'postgresql postgresql-contrib', 'postgresql postgresql-server', 'postgresql postgresql-libs', 'postgresql'),
+              riskLevel: 'medium'
+            },
+            {
+              id: 'install-mysql',
+              buttonText: 'Install MySQL',
+              explanation: 'Installs MySQL database server (auto-detects OS)',
+              terminalCommand: createOSAwareInstallCommand('mysql', 'mysql-server', 'mysql-server', 'mysql-server', 'mysql'),
+              riskLevel: 'medium'
+            },
+            {
+              id: 'install-redis',
+              buttonText: 'Install Redis',
+              explanation: 'Installs Redis in-memory database (auto-detects OS)',
+              terminalCommand: createOSAwareInstallCommand('redis', 'redis-server', 'redis', 'redis', 'redis'),
+              riskLevel: 'medium'
+            }
+          ]
+        },
+        {
+          id: 'web-server-tools',
+          name: 'Web Server Tools',
+          description: 'Install web servers and reverse proxies',
+          commands: [
+            {
+              id: 'install-nginx',
+              buttonText: 'Install Nginx',
+              explanation: 'Installs Nginx web server (auto-detects OS)',
+              terminalCommand: createOSAwareInstallCommand('nginx', 'nginx', 'nginx', 'nginx', 'nginx'),
+              riskLevel: 'medium'
+            },
+            {
+              id: 'install-apache',
+              buttonText: 'Install Apache',
+              explanation: 'Installs Apache web server (auto-detects OS)',
+              terminalCommand: createOSAwareInstallCommand('apache', 'apache2', 'httpd', 'httpd', 'apache'),
+              riskLevel: 'medium'
+            }
+          ]
+        }
+      ]
+    },
+    {
       id: 'system-monitoring',
       name: 'SYSTEM MONITORING & PERFORMANCE',
       description: 'Monitor server health, performance, and resource usage',
@@ -431,6 +533,13 @@ export class QuickActionsService {
               buttonText: 'Show open ports',
               explanation: 'List all listening ports and services',
               terminalCommand: 'netstat -tulpn'
+            },
+            {
+              id: 'install-net-tools',
+              buttonText: 'Install network tools',
+              explanation: 'Installs network diagnostic tools like netstat, ifconfig (auto-detects OS)',
+              terminalCommand: createOSAwareInstallCommand('net-tools', 'net-tools', 'net-tools', 'net-tools', 'net-tools'),
+              riskLevel: 'low'
             }
           ]
         }
