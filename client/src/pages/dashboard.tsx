@@ -3,6 +3,7 @@ import Header from "@/components/header";
 import Sidebar from "@/components/sidebar";
 import CommandInput from "@/components/command-input";
 import TerminalOutput from "@/components/terminal-output";
+import QuickActionsPanel from "@/components/quick-actions-panel";
 import SSHModal from "@/components/ssh-modal";
 import { useQuery } from "@tanstack/react-query";
 import { SSHConnection, Command } from "@shared/schema";
@@ -31,13 +32,23 @@ export default function Dashboard() {
       <div className="flex h-screen pt-16">
         <Sidebar commands={commands} />
         
-        <main className="flex-1 flex flex-col">
-          <CommandInput 
-            activeConnection={activeConnection}
-            onCommandCreated={setCurrentCommand}
-          />
+        <main className="flex-1 flex">
+          {/* Left panel - AI Assistant & Terminal */}
+          <div className="flex-1 flex flex-col">
+            <CommandInput 
+              activeConnection={activeConnection}
+              onCommandCreated={setCurrentCommand}
+            />
+            <TerminalOutput currentCommand={currentCommand} />
+          </div>
           
-          <TerminalOutput currentCommand={currentCommand} />
+          {/* Right panel - Quick Actions */}
+          <div className="w-96 border-l border-border-default bg-surface flex-shrink-0">
+            <QuickActionsPanel 
+              activeConnection={activeConnection}
+              onCommandCreated={setCurrentCommand}
+            />
+          </div>
         </main>
       </div>
 

@@ -177,178 +177,183 @@ export default function QuickActionsPanel({ activeConnection, onCommandCreated }
 
   if (!activeConnection) {
     return (
-      <div className="flex items-center justify-center h-full text-center p-8">
+      <div className="flex items-center justify-center h-full text-center p-4">
         <div>
-          <div className="text-4xl mb-4">🔗</div>
-          <h3 className="text-lg font-semibold mb-2">No SSH Connection</h3>
-          <p className="text-muted-foreground">Connect to a server to access quick actions</p>
+          <div className="text-2xl mb-2">🔗</div>
+          <h3 className="text-sm font-semibold mb-1">No SSH Connection</h3>
+          <p className="text-xs text-text-secondary">Connect to a server first</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full overflow-y-auto p-6 space-y-6" data-testid="panel-quick-actions">
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold mb-2">Quick Actions</h2>
-        <p className="text-muted-foreground">Pre-built commands organized by category</p>
+    <div className="h-full overflow-y-auto" data-testid="panel-quick-actions">
+      <div className="p-4 border-b border-border-default bg-surface-light">
+        <h2 className="text-lg font-bold mb-1">Quick Actions</h2>
+        <p className="text-xs text-text-secondary">Pre-built commands by category</p>
       </div>
+      <div className="p-3 space-y-3">
 
-      {categories.map((category) => (
-        <Card key={category.id} className="w-full" data-testid={`card-category-${category.id}`}>
-          <Collapsible 
-            open={openCategories[category.id]} 
-            onOpenChange={() => toggleCategory(category.id)}
-          >
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="text-2xl">{category.icon}</div>
-                    <div className="text-left">
-                      <CardTitle className="text-lg">{category.name}</CardTitle>
-                      <CardDescription>{category.description}</CardDescription>
+        {categories.map((category) => (
+          <Card key={category.id} className="w-full border-border-default" data-testid={`card-category-${category.id}`}>
+            <Collapsible 
+              open={openCategories[category.id]} 
+              onOpenChange={() => toggleCategory(category.id)}
+            >
+              <CollapsibleTrigger asChild>
+                <CardHeader className="cursor-pointer hover:bg-surface-light transition-colors p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className="text-lg">{category.icon}</div>
+                      <div className="text-left">
+                        <CardTitle className="text-sm font-medium">{category.name}</CardTitle>
+                        <CardDescription className="text-xs">{category.description}</CardDescription>
+                      </div>
                     </div>
+                    {openCategories[category.id] ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
                   </div>
-                  {openCategories[category.id] ? (
-                    <ChevronDown className="w-5 h-5" />
-                  ) : (
-                    <ChevronRight className="w-5 h-5" />
-                  )}
-                </div>
-              </CardHeader>
-            </CollapsibleTrigger>
+                </CardHeader>
+              </CollapsibleTrigger>
             
-            <CollapsibleContent>
-              <CardContent className="space-y-4">
-                {category.sections.map((section) => (
-                  <Card key={section.id} className="bg-muted/30" data-testid={`card-section-${section.id}`}>
-                    <Collapsible 
-                      open={openSections[section.id]} 
-                      onOpenChange={() => toggleSection(section.id)}
-                    >
-                      <CollapsibleTrigger asChild>
-                        <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors pb-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <CardTitle className="text-base">{section.name}</CardTitle>
-                              <CardDescription className="text-sm">{section.description}</CardDescription>
+              <CollapsibleContent>
+                <CardContent className="space-y-2 p-3 pt-0">
+                  {category.sections.map((section) => (
+                    <Card key={section.id} className="bg-surface-light border-border-default/50" data-testid={`card-section-${section.id}`}>
+                      <Collapsible 
+                        open={openSections[section.id]} 
+                        onOpenChange={() => toggleSection(section.id)}
+                      >
+                        <CollapsibleTrigger asChild>
+                          <CardHeader className="cursor-pointer hover:bg-surface transition-colors p-2">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <CardTitle className="text-sm">{section.name}</CardTitle>
+                                <CardDescription className="text-xs">{section.description}</CardDescription>
+                              </div>
+                              {openSections[section.id] ? (
+                                <ChevronDown className="w-3 h-3" />
+                              ) : (
+                                <ChevronRight className="w-3 h-3" />
+                              )}
                             </div>
-                            {openSections[section.id] ? (
-                              <ChevronDown className="w-4 h-4" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4" />
-                            )}
-                          </div>
-                        </CardHeader>
-                      </CollapsibleTrigger>
+                          </CardHeader>
+                        </CollapsibleTrigger>
                       
-                      <CollapsibleContent>
-                        <CardContent className="space-y-3 pt-0">
-                          {section.commands.map((command) => (
-                            <Card key={command.id} className="bg-background" data-testid={`card-command-${command.id}`}>
-                              <CardContent className="p-4">
-                                <div className="space-y-3">
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <h4 className="font-medium">{command.buttonText}</h4>
-                                        {command.riskLevel && (
-                                          <Badge variant={getRiskBadgeVariant(command.riskLevel)} className="text-xs">
-                                            {getRiskIcon(command.riskLevel)}
-                                            {command.riskLevel}
-                                          </Badge>
-                                        )}
-                                      </div>
-                                      <p className="text-sm text-muted-foreground mb-2">{command.explanation}</p>
-                                      <code className="text-xs bg-muted p-2 rounded font-mono block">
-                                        {processCommand(command)}
-                                      </code>
-                                    </div>
-                                  </div>
-
-                                  {command.userInputs && command.userInputs.length > 0 && (
-                                    <div className="space-y-3 pt-3 border-t">
-                                      {command.userInputs.map((input) => (
-                                        <div key={input.name} className="space-y-2">
-                                          <div className="flex items-center justify-between">
-                                            <Label className="text-sm font-medium">{input.description}</Label>
-                                            {input.autoDetect && (
-                                              <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => autoDetectValues(command.id, input.autoDetect!)}
-                                                disabled={autoDetectMutation.isPending}
-                                                data-testid={`button-auto-detect-${command.id}-${input.name}`}
-                                              >
-                                                Auto-detect
-                                              </Button>
-                                            )}
-                                          </div>
-                                          
-                                          {input.type === 'select' ? (
-                                            <Select
-                                              value={userInputs[command.id]?.[input.name] || ''}
-                                              onValueChange={(value) => updateUserInput(command.id, input.name, value)}
-                                            >
-                                              <SelectTrigger data-testid={`select-${command.id}-${input.name}`}>
-                                                <SelectValue placeholder={input.placeholder} />
-                                              </SelectTrigger>
-                                              <SelectContent>
-                                                {(autoDetectOptions[input.autoDetect!] || input.options || []).map((option) => (
-                                                  <SelectItem key={option} value={option}>
-                                                    {option}
-                                                  </SelectItem>
-                                                ))}
-                                              </SelectContent>
-                                            </Select>
-                                          ) : input.type === 'multiline' ? (
-                                            <Textarea
-                                              placeholder={input.placeholder}
-                                              value={userInputs[command.id]?.[input.name] || ''}
-                                              onChange={(e) => updateUserInput(command.id, input.name, e.target.value)}
-                                              data-testid={`textarea-${command.id}-${input.name}`}
-                                            />
-                                          ) : (
-                                            <Input
-                                              placeholder={input.placeholder}
-                                              value={userInputs[command.id]?.[input.name] || ''}
-                                              onChange={(e) => updateUserInput(command.id, input.name, e.target.value)}
-                                              data-testid={`input-${command.id}-${input.name}`}
-                                            />
+                        <CollapsibleContent>
+                          <CardContent className="space-y-2 p-2 pt-0">
+                            {section.commands.map((command) => (
+                              <Card key={command.id} className="bg-background border-border-default/30" data-testid={`card-command-${command.id}`}>
+                                <CardContent className="p-3">
+                                  <div className="space-y-2">
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-1 mb-1">
+                                          <h4 className="text-sm font-medium">{command.buttonText}</h4>
+                                          {command.riskLevel && (
+                                            <Badge variant={getRiskBadgeVariant(command.riskLevel)} className="text-xs px-1 py-0">
+                                              {getRiskIcon(command.riskLevel)}
+                                              <span className="ml-1">{command.riskLevel}</span>
+                                            </Badge>
                                           )}
-                                          
-                                          <p className="text-xs text-muted-foreground">
-                                            Example: {input.example}
-                                          </p>
                                         </div>
-                                      ))}
+                                        <p className="text-xs text-text-secondary mb-2">{command.explanation}</p>
+                                        <code className="text-xs bg-surface-light p-1 rounded font-mono block">
+                                          {processCommand(command)}
+                                        </code>
+                                      </div>
                                     </div>
-                                  )}
 
-                                  <Button
-                                    onClick={() => handleExecuteCommand(command)}
-                                    disabled={createCommandMutation.isPending || executeCommandMutation.isPending}
-                                    className="w-full"
-                                    data-testid={`button-execute-${command.id}`}
-                                  >
-                                    <Play className="w-4 h-4 mr-2" />
-                                    Execute Command
-                                  </Button>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </CardContent>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </Card>
-                ))}
-              </CardContent>
-            </CollapsibleContent>
-          </Collapsible>
-        </Card>
-      ))}
+                                    {command.userInputs && command.userInputs.length > 0 && (
+                                      <div className="space-y-2 pt-2 border-t border-border-default/30">
+                                        {command.userInputs.map((input) => (
+                                          <div key={input.name} className="space-y-1">
+                                            <div className="flex items-center justify-between">
+                                              <Label className="text-xs font-medium">{input.description}</Label>
+                                              {input.autoDetect && (
+                                                <Button
+                                                  variant="outline"
+                                                  size="sm"
+                                                  className="h-6 px-2 text-xs"
+                                                  onClick={() => autoDetectValues(command.id, input.autoDetect!)}
+                                                  disabled={autoDetectMutation.isPending}
+                                                  data-testid={`button-auto-detect-${command.id}-${input.name}`}
+                                                >
+                                                  Auto-detect
+                                                </Button>
+                                              )}
+                                            </div>
+                                            
+                                            {input.type === 'select' ? (
+                                              <Select
+                                                value={userInputs[command.id]?.[input.name] || ''}
+                                                onValueChange={(value) => updateUserInput(command.id, input.name, value)}
+                                              >
+                                                <SelectTrigger className="h-7 text-xs" data-testid={`select-${command.id}-${input.name}`}>
+                                                  <SelectValue placeholder={input.placeholder} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  {(autoDetectOptions[input.autoDetect!] || input.options || []).map((option) => (
+                                                    <SelectItem key={option} value={option}>
+                                                      {option}
+                                                    </SelectItem>
+                                                  ))}
+                                                </SelectContent>
+                                              </Select>
+                                            ) : input.type === 'multiline' ? (
+                                              <Textarea
+                                                className="text-xs min-h-16"
+                                                placeholder={input.placeholder}
+                                                value={userInputs[command.id]?.[input.name] || ''}
+                                                onChange={(e) => updateUserInput(command.id, input.name, e.target.value)}
+                                                data-testid={`textarea-${command.id}-${input.name}`}
+                                              />
+                                            ) : (
+                                              <Input
+                                                className="h-7 text-xs"
+                                                placeholder={input.placeholder}
+                                                value={userInputs[command.id]?.[input.name] || ''}
+                                                onChange={(e) => updateUserInput(command.id, input.name, e.target.value)}
+                                                data-testid={`input-${command.id}-${input.name}`}
+                                              />
+                                            )}
+                                            
+                                            <p className="text-xs text-text-secondary">
+                                              Example: {input.example}
+                                            </p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    <Button
+                                      onClick={() => handleExecuteCommand(command)}
+                                      disabled={createCommandMutation.isPending || executeCommandMutation.isPending}
+                                      className="w-full h-8 text-xs"
+                                      data-testid={`button-execute-${command.id}`}
+                                    >
+                                      <Play className="w-3 h-3 mr-1" />
+                                      Execute Command
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </CardContent>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </Card>
+                  ))}
+                </CardContent>
+              </CollapsibleContent>
+            </Collapsible>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
