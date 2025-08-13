@@ -1,11 +1,13 @@
 import { SSHConnection } from "@shared/schema";
+import { History } from "lucide-react";
 
 interface HeaderProps {
   activeConnection?: SSHConnection;
   onOpenSSHModal: () => void;
+  onOpenCommandHistory: () => void;
 }
 
-export default function Header({ activeConnection, onOpenSSHModal }: HeaderProps) {
+export default function Header({ activeConnection, onOpenSSHModal, onOpenCommandHistory }: HeaderProps) {
   return (
     <header className="fixed top-0 left-0 right-0 z-40 bg-surface border-b border-border-default px-6 py-4">
       <div className="flex items-center justify-between">
@@ -34,7 +36,7 @@ export default function Header({ activeConnection, onOpenSSHModal }: HeaderProps
 
         <div className="flex items-center space-x-3">
           {activeConnection && (
-            <div className="flex items-center space-x-2 text-sm text-text-secondary">
+            <div className="flex items-center space-x-2 text-sm text-gray-400">
               <i className="fas fa-server"></i>
               <span>{activeConnection.host}</span>
               <span>|</span>
@@ -43,16 +45,24 @@ export default function Header({ activeConnection, onOpenSSHModal }: HeaderProps
           )}
 
           <button 
+            onClick={onOpenCommandHistory}
+            className="flex items-center space-x-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md hover:bg-gray-700 transition-colors text-white"
+          >
+            <History className="w-4 h-4" />
+            <span className="text-sm">History</span>
+          </button>
+
+          <button 
             onClick={onOpenSSHModal}
-            className="flex items-center space-x-2 px-3 py-2 bg-surface-light border border-border-default rounded-md hover:bg-surface transition-colors"
+            className="flex items-center space-x-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md hover:bg-gray-700 transition-colors text-white"
             data-testid="button-ssh-keys"
           >
-            <i className="fas fa-key text-text-secondary"></i>
+            <i className="fas fa-key"></i>
             <span className="text-sm">SSH Keys</span>
           </button>
 
-          <button className="p-2 bg-surface-light border border-border-default rounded-md hover:bg-surface transition-colors">
-            <i className="fas fa-cog text-text-secondary"></i>
+          <button className="p-2 bg-gray-800 border border-gray-700 rounded-md hover:bg-gray-700 transition-colors">
+            <i className="fas fa-cog text-gray-400"></i>
           </button>
         </div>
       </div>

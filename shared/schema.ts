@@ -46,6 +46,30 @@ export const commands = pgTable("commands", {
   completedAt: timestamp("completed_at"),
 });
 
+export const devopsWorkflows = pgTable("devops_workflows", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull(), // docker, git, aws, kubernetes, etc.
+  icon: text("icon").notNull(),
+  steps: jsonb("steps").notNull(), // Array of workflow steps
+  requirements: jsonb("requirements"), // Required tools/dependencies
+  isBuiltIn: boolean("is_built_in").default(true),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const workflowExecutions = pgTable("workflow_executions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowId: varchar("workflow_id").references(() => devopsWorkflows.id),
+  connectionId: varchar("connection_id").references(() => sshConnections.id),
+  status: text("status").notNull().default('pending'), // pending, running, success, error, cancelled
+  currentStep: integer("current_step").default(0),
+  logs: jsonb("logs").default([]), // Array of execution logs
+  variables: jsonb("variables").default({}), // User inputs and runtime variables
+  startedAt: timestamp("started_at").default(sql`now()`),
+  completedAt: timestamp("completed_at"),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -75,6 +99,20 @@ export const insertCommandSchema = createInsertSchema(commands).omit({
   completedAt: true,
 });
 
+export const insertDevopsWorkflowSchema = createInsertSchema(devopsWorkflows).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertWorkflowExecutionSchema = createInsertSchema(workflowExecutions).omit({
+  id: true,
+  status: true,
+  currentStep: true,
+  logs: true,
+  startedAt: true,
+  completedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type SSHConnection = typeof sshConnections.$inferSelect;
@@ -83,3 +121,7 @@ export type SSHKey = typeof sshKeys.$inferSelect;
 export type InsertSSHKey = z.infer<typeof insertSSHKeySchema>;
 export type Command = typeof commands.$inferSelect;
 export type InsertCommand = z.infer<typeof insertCommandSchema>;
+export type DevopsWorkflow = typeof devopsWorkflows.$inferSelect;
+export type InsertDevopsWorkflow = z.infer<typeof insertDevopsWorkflowSchema>;
+export type WorkflowExecution = typeof workflowExecutions.$inferSelect;
+export type InsertWorkflowExecution = z.infer<typeof insertWorkflowExecutionSchema>;
