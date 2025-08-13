@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { History, Search, Trash2, Clock, CheckCircle, XCircle, Loader } from "lucide-react";
 
 interface CommandHistoryModalProps {
@@ -62,65 +62,67 @@ export default function CommandHistoryModal({ isOpen, onClose, commands }: Comma
           </div>
 
           {/* Commands List */}
-          <ScrollArea className="h-96 w-full border border-gray-700 rounded-md p-4">
-            {filteredCommands.length === 0 ? (
-              <div className="text-center text-gray-400 py-8">
-                <History className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No commands found</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {filteredCommands.map((command) => (
-                  <div 
-                    key={command.id} 
-                    className="p-4 border border-gray-700 rounded-lg hover:bg-gray-800/50 transition-colors"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <span className="text-xs text-gray-400">
-                        {command.createdAt && formatDistanceToNow(new Date(command.createdAt), { addSuffix: true })}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <div className={getStatusColor(command.status)}>
-                          {getStatusIcon(command.status)}
-                        </div>
-                        <span className={`text-xs capitalize ${getStatusColor(command.status)}`}>
-                          {command.status}
+          <div className="h-96 w-full border border-gray-700 rounded-md overflow-auto">
+            <div className="p-4">
+              {filteredCommands.length === 0 ? (
+                <div className="text-center text-gray-400 py-8">
+                  <History className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No commands found</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredCommands.map((command) => (
+                    <div 
+                      key={command.id} 
+                      className="p-4 border border-gray-700 rounded-lg hover:bg-gray-800/50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <span className="text-xs text-gray-400">
+                          {command.createdAt && formatDistanceToNow(new Date(command.createdAt), { addSuffix: true })}
                         </span>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div>
-                        <span className="text-sm text-gray-400">Plain English:</span>
-                        <p className="text-sm text-white">{command.plainTextInput}</p>
-                      </div>
-                      
-                      <div>
-                        <span className="text-sm text-gray-400">Command:</span>
-                        <code className="block text-sm font-mono text-blue-400 bg-gray-800 p-2 rounded mt-1 break-all">
-                          {command.generatedCommand}
-                        </code>
+                        <div className="flex items-center gap-2">
+                          <div className={getStatusColor(command.status)}>
+                            {getStatusIcon(command.status)}
+                          </div>
+                          <span className={`text-xs capitalize ${getStatusColor(command.status)}`}>
+                            {command.status}
+                          </span>
+                        </div>
                       </div>
                       
-                      {command.aiExplanation && (
+                      <div className="space-y-2">
                         <div>
-                          <span className="text-sm text-gray-400">AI Explanation:</span>
-                          <p className="text-sm text-gray-300 italic">{command.aiExplanation}</p>
+                          <span className="text-sm text-gray-400">Plain English:</span>
+                          <p className="text-sm text-white">{command.plainTextInput}</p>
                         </div>
-                      )}
-                      
-                      {command.exitCode !== null && (
-                        <div className="text-xs text-gray-400 flex items-center gap-4">
-                          <span>Exit code: {command.exitCode}</span>
-                          {command.executionTime && <span>Execution: {command.executionTime}ms</span>}
+                        
+                        <div>
+                          <span className="text-sm text-gray-400">Command:</span>
+                          <code className="block text-sm font-mono text-blue-400 bg-gray-800 p-2 rounded mt-1 break-all">
+                            {command.generatedCommand}
+                          </code>
                         </div>
-                      )}
+                        
+                        {command.aiExplanation && (
+                          <div>
+                            <span className="text-sm text-gray-400">AI Explanation:</span>
+                            <p className="text-sm text-gray-300 italic">{command.aiExplanation}</p>
+                          </div>
+                        )}
+                        
+                        {command.exitCode !== null && (
+                          <div className="text-xs text-gray-400 flex items-center gap-4">
+                            <span>Exit code: {command.exitCode}</span>
+                            {command.executionTime && <span>Execution: {command.executionTime}ms</span>}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </ScrollArea>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Actions */}
           <div className="flex justify-between items-center pt-4 border-t border-gray-700">

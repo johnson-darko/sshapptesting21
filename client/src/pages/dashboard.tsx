@@ -97,6 +97,7 @@ export default function Dashboard() {
         isOpen={isWorkflowModalOpen}
         onClose={() => setIsWorkflowModalOpen(false)}
         workflow={selectedWorkflow}
+        activeConnection={activeConnection}
         onExecute={handleWorkflowExecute}
       />
     </div>

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { 
   Container, 
   GitBranch, 
@@ -161,7 +161,7 @@ export default function DevopsWorkflowsPanel({ onWorkflowSelect }: DevopsWorkflo
         </TabsList>
 
         <TabsContent value={selectedCategory} className="mt-4">
-          <ScrollArea className="h-[calc(100vh-240px)]">
+          <div className="h-[calc(100vh-240px)] overflow-auto pr-2">
             <div className="space-y-3">
               {filteredWorkflows.map((workflow) => (
                 <Card key={workflow.id} className="bg-gray-800/50 border-gray-700 hover:bg-gray-800 transition-colors">
@@ -215,7 +215,7 @@ export default function DevopsWorkflowsPanel({ onWorkflowSelect }: DevopsWorkflo
                 </Card>
               ))}
             </div>
-          </ScrollArea>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

@@ -1,12 +1,14 @@
-import { useState } from "react";
-import { DevopsWorkflow } from "@shared/schema";
+import { useState, useRef } from "react";
+import { DevopsWorkflow, SSHConnection } from "@shared/schema";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+
 import { 
   Play, 
   Pause, 
@@ -22,19 +24,24 @@ interface WorkflowExecutionModalProps {
   isOpen: boolean;
   onClose: () => void;
   workflow: DevopsWorkflow | null;
+  activeConnection?: SSHConnection;
   onExecute: (workflow: DevopsWorkflow, variables: Record<string, string>) => void;
 }
 
 export default function WorkflowExecutionModal({ 
   isOpen, 
   onClose, 
-  workflow, 
+  workflow,
+  activeConnection,
   onExecute 
 }: WorkflowExecutionModalProps) {
   const [variables, setVariables] = useState<Record<string, string>>({});
   const [isExecuting, setIsExecuting] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [executionLogs, setExecutionLogs] = useState<string[]>([]);
+  const [executionId, setExecutionId] = useState<string | null>(null);
+  const executionRef = useRef<{ cancelled: boolean }>({ cancelled: false });
 
   if (!workflow) return null;
 
@@ -54,11 +61,95 @@ export default function WorkflowExecutionModal({
 
   const workflowVariables = extractVariables(workflow.steps as any[]);
 
-  const handleExecute = () => {
+  // Execute workflow step by step
+  const executeWorkflowMutation = useMutation({
+    mutationFn: async (command: string) => {
+      if (!activeConnection) throw new Error('No active connection');
+      
+      return await apiRequest(`/api/commands`, {
+        method: 'POST',
+        body: {
+          connectionId: activeConnection.id,
+          plainTextInput: `Workflow step: ${command}`,
+          generatedCommand: command,
+          aiExplanation: `Executing workflow step`
+        }
+      });
+    }
+  });
+
+  const handleExecute = async () => {
+    if (!workflow || !activeConnection) {
+      setExecutionLogs(prev => [...prev, 'Error: No active SSH connection']);
+      return;
+    }
+
     setIsExecuting(true);
+    setIsPaused(false);
     setCurrentStep(0);
-    setExecutionLogs([]);
-    onExecute(workflow, variables);
+    setExecutionLogs(['Starting workflow execution...']);
+    executionRef.current.cancelled = false;
+
+    try {
+      const steps = workflow.steps as any[];
+      
+      for (let i = 0; i < steps.length; i++) {
+        if (executionRef.current.cancelled) {
+          setExecutionLogs(prev => [...prev, 'Workflow execution cancelled']);
+          break;
+        }
+
+        setCurrentStep(i);
+        setExecutionLogs(prev => [...prev, `Step ${i + 1}: ${steps[i].description}`]);
+        
+        // Replace variables in command
+        let command = steps[i].command;
+        Object.entries(variables).forEach(([key, value]) => {
+          command = command.replace(new RegExp(`{${key}}`, 'g'), value);
+        });
+
+        setExecutionLogs(prev => [...prev, `Executing: ${command}`]);
+
+        // Wait for pause
+        while (isPaused && !executionRef.current.cancelled) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        if (executionRef.current.cancelled) break;
+
+        try {
+          await executeWorkflowMutation.mutateAsync(command);
+          setExecutionLogs(prev => [...prev, `✓ Step ${i + 1} completed successfully`]);
+        } catch (error) {
+          setExecutionLogs(prev => [...prev, `✗ Step ${i + 1} failed: ${error}`]);
+        }
+
+        // Small delay between steps
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      if (!executionRef.current.cancelled) {
+        setCurrentStep(steps.length);
+        setExecutionLogs(prev => [...prev, '🎉 Workflow completed successfully!']);
+      }
+    } catch (error) {
+      setExecutionLogs(prev => [...prev, `Fatal error: ${error}`]);
+    } finally {
+      setIsExecuting(false);
+      setIsPaused(false);
+    }
+  };
+
+  const handlePause = () => {
+    setIsPaused(!isPaused);
+    setExecutionLogs(prev => [...prev, isPaused ? 'Workflow resumed' : 'Workflow paused']);
+  };
+
+  const handleStop = () => {
+    executionRef.current.cancelled = true;
+    setIsExecuting(false);
+    setIsPaused(false);
+    setExecutionLogs(prev => [...prev, 'Workflow stopped by user']);
   };
 
   const getStepStatus = (stepIndex: number) => {
@@ -167,6 +258,19 @@ export default function WorkflowExecutionModal({
             </div>
           </div>
 
+          {/* Connection Status */}
+          {!activeConnection && (
+            <div className="p-4 border border-red-500/30 bg-red-500/10 rounded-lg">
+              <div className="flex items-center gap-2 text-red-400">
+                <XCircle className="w-4 h-4" />
+                <span className="text-sm font-medium">No SSH Connection</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                Please establish an SSH connection before executing workflows.
+              </p>
+            </div>
+          )}
+
           {/* Progress & Logs */}
           {isExecuting && (
             <div className="space-y-4">
@@ -185,7 +289,7 @@ export default function WorkflowExecutionModal({
 
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Execution Log</Label>
-                <ScrollArea className="h-32 w-full border border-gray-700 rounded-md p-3 bg-gray-800">
+                <div className="h-32 w-full border border-gray-700 rounded-md p-3 bg-gray-800 overflow-auto">
                   <div className="space-y-1 text-xs font-mono">
                     {executionLogs.map((log, index) => (
                       <div key={index} className="text-gray-300">{log}</div>
@@ -194,7 +298,7 @@ export default function WorkflowExecutionModal({
                       <div className="text-gray-500">Waiting for execution to start...</div>
                     )}
                   </div>
-                </ScrollArea>
+                </div>
               </div>
             </div>
           )}
@@ -207,11 +311,21 @@ export default function WorkflowExecutionModal({
             <div className="flex gap-2">
               {isExecuting ? (
                 <>
-                  <Button variant="outline" size="sm" className="border-yellow-600 text-yellow-400">
-                    <Pause className="w-4 h-4 mr-2" />
-                    Pause
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handlePause}
+                    className={isPaused ? "border-green-600 text-green-400" : "border-yellow-600 text-yellow-400"}
+                  >
+                    {isPaused ? <Play className="w-4 h-4 mr-2" /> : <Pause className="w-4 h-4 mr-2" />}
+                    {isPaused ? 'Resume' : 'Pause'}
                   </Button>
-                  <Button variant="outline" size="sm" className="border-red-600 text-red-400">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleStop}
+                    className="border-red-600 text-red-400 hover:bg-red-600/10"
+                  >
                     <Square className="w-4 h-4 mr-2" />
                     Stop
                   </Button>
@@ -219,8 +333,8 @@ export default function WorkflowExecutionModal({
               ) : (
                 <Button 
                   onClick={handleExecute}
-                  disabled={workflowVariables.some(v => !variables[v])}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  disabled={workflowVariables.some(v => !variables[v]) || !activeConnection}
+                  className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
                 >
                   <Play className="w-4 h-4 mr-2" />
                   Execute Workflow
