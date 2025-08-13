@@ -123,14 +123,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Connection not found. The connection may have been cleared due to server restart. Please recreate the connection.' });
       }
 
-      // Check if SSH agent is available first
-      if (!process.env.SSH_AUTH_SOCK) {
-        return res.status(400).json({ 
-          error: 'SSH agent not available. Please run: eval "$(ssh-agent -s)" && ssh-add ~/.ssh/your_key_name. See SSH_SETUP.md for detailed instructions.' 
-        });
+      // Try SSH agent first, fallback to private key for testing
+      let success = false;
+      
+      if (process.env.SSH_AUTH_SOCK) {
+        console.log('Attempting SSH agent connection...');
+        success = await sshKeyService.connectWithAgent(connection);
       }
-
-      const success = await sshKeyService.connectWithAgent(connection);
+      
+      if (!success) {
+        console.log('SSH agent connection failed or not available, trying private key...');
+        const testPrivateKeyPath = `${process.env.HOME}/.ssh/test_key`;
+        success = await sshKeyService.connectWithPrivateKey(connection, testPrivateKeyPath);
+      }
       if (success) {
         await storage.updateSSHConnectionStatus(id, true);
         res.json({ success: true });

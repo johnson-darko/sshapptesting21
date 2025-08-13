@@ -1,5 +1,6 @@
 import { Client } from 'ssh2';
 import { createHash } from 'crypto';
+import fs from 'fs/promises';
 import { storage } from '../storage';
 import { SSHConnection, SSHKey } from '@shared/schema';
 
@@ -193,6 +194,47 @@ export class SSHKeyService {
       });
     } catch (error) {
       console.log('SSH agent connection failed:', (error as Error).message);
+      return false;
+    }
+  }
+
+  /**
+   * Connect to server using private key file (for testing)
+   */
+  async connectWithPrivateKey(connection: SSHConnection, privateKeyPath: string): Promise<boolean> {
+    try {
+      const privateKey = await fs.readFile(privateKeyPath);
+      const client = new Client();
+      
+      return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          client.end();
+          resolve(false);
+        }, 10000);
+
+        client.on('ready', () => {
+          clearTimeout(timeout);
+          this.connections.set(connection.id, client);
+          resolve(true);
+        });
+
+        client.on('error', (err) => {
+          console.log('SSH private key connection error:', err.message);
+          clearTimeout(timeout);
+          resolve(false);
+        });
+
+        // Use private key authentication
+        client.connect({
+          host: connection.host,
+          port: connection.port || 22,
+          username: connection.username,
+          privateKey,
+          readyTimeout: 10000,
+        });
+      });
+    } catch (error) {
+      console.log('SSH private key connection failed:', (error as Error).message);
       return false;
     }
   }
