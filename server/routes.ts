@@ -133,8 +133,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!success) {
         console.log('SSH agent connection failed or not available, trying private key...');
-        const testPrivateKeyPath = `${process.env.HOME}/.ssh/test_key`;
-        success = await sshKeyService.connectWithPrivateKey(connection, testPrivateKeyPath);
+        const ec2PrivateKeyPath = `${process.env.HOME}/.ssh/ec2key.pem`;
+        success = await sshKeyService.connectWithPrivateKey(connection, ec2PrivateKeyPath);
       }
       if (success) {
         await storage.updateSSHConnectionStatus(id, true);
