@@ -1,23 +1,24 @@
 # Development Notes
 
-## In-Memory Storage Behavior
+## Database Storage
 
-This application uses in-memory storage for development, which means:
+This application now uses **PostgreSQL database** for persistent storage:
 
-⚠️ **Data gets cleared when the server restarts** - This is normal behavior
-- SSH connections will be lost
-- SSH keys will be lost  
-- Command history will be cleared
+✅ **Data persists across server restarts**
+- SSH connections are saved
+- SSH keys are saved  
+- Command history is preserved
 
-### After Server Restart, You Need To:
+### Setup Required (One Time):
 
-1. **Re-add your SSH keys** in the SSH Keys tab
-2. **Re-create your server connections** in the Connections tab
-3. **Set up SSH agent** (only once per session):
+1. **Set up SSH agent** (once per development session):
    ```bash
    eval "$(ssh-agent -s)"
    ssh-add ~/.ssh/your_key_name
    ```
+
+2. **Add your SSH keys** - they will be saved in the database
+3. **Create server connections** - they will persist across restarts
 
 ## Current Status
 

@@ -1,4 +1,6 @@
-import { type User, type InsertUser, type SSHConnection, type InsertSSHConnection, type SSHKey, type InsertSSHKey, type Command, type InsertCommand } from "@shared/schema";
+import { type User, type InsertUser, type SSHConnection, type InsertSSHConnection, type SSHKey, type InsertSSHKey, type Command, type InsertCommand, users, sshConnections, sshKeys, commands } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import * as crypto from "crypto";
 
@@ -31,6 +33,140 @@ function generateFingerprint(publicKey: string): string {
   const keyData = publicKey.split(' ')[1] || publicKey;
   const hash = crypto.createHash('sha256').update(keyData, 'base64').digest('base64');
   return `SHA256:${hash}`;
+}
+
+export class DatabaseStorage implements IStorage {
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+
+  async getSSHConnections(): Promise<SSHConnection[]> {
+    return await db.select().from(sshConnections);
+  }
+
+  async getSSHConnection(id: string): Promise<SSHConnection | undefined> {
+    const [connection] = await db.select().from(sshConnections).where(eq(sshConnections.id, id));
+    return connection || undefined;
+  }
+
+  async createSSHConnection(insertConnection: InsertSSHConnection): Promise<SSHConnection> {
+    const [connection] = await db
+      .insert(sshConnections)
+      .values({
+        ...insertConnection,
+        port: insertConnection.port ?? 22,
+      })
+      .returning();
+    return connection;
+  }
+
+  async updateSSHConnectionStatus(id: string, isActive: boolean): Promise<void> {
+    if (isActive) {
+      // Set all connections to inactive first
+      await db.update(sshConnections).set({ isActive: false });
+    }
+    
+    await db.update(sshConnections)
+      .set({ isActive })
+      .where(eq(sshConnections.id, id));
+  }
+
+  async getSSHKeys(): Promise<SSHKey[]> {
+    return await db.select().from(sshKeys).where(eq(sshKeys.isActive, true));
+  }
+
+  async getSSHKey(id: string): Promise<SSHKey | undefined> {
+    const [sshKey] = await db.select().from(sshKeys).where(eq(sshKeys.id, id));
+    return sshKey || undefined;
+  }
+
+  async createSSHKey(insertSSHKey: InsertSSHKey & { keyType?: string }): Promise<SSHKey> {
+    const fingerprint = generateFingerprint(insertSSHKey.publicKey);
+    const keyType = insertSSHKey.keyType || insertSSHKey.publicKey.split(' ')[0]?.replace('ssh-', '') || 'rsa';
+    
+    const [sshKey] = await db
+      .insert(sshKeys)
+      .values({
+        ...insertSSHKey,
+        fingerprint,
+        keyType,
+        isActive: insertSSHKey.isActive ?? true,
+      })
+      .returning();
+    return sshKey;
+  }
+
+  async updateSSHKeyLastUsed(id: string): Promise<void> {
+    await db.update(sshKeys)
+      .set({ lastUsed: new Date() })
+      .where(eq(sshKeys.id, id));
+  }
+
+  async deleteSSHKey(id: string): Promise<void> {
+    await db.update(sshKeys)
+      .set({ isActive: false })
+      .where(eq(sshKeys.id, id));
+  }
+
+  async getCommands(connectionId?: string): Promise<Command[]> {
+    if (connectionId) {
+      return await db.select().from(commands).where(eq(commands.connectionId, connectionId));
+    }
+    return await db.select().from(commands);
+  }
+
+  async getCommand(id: string): Promise<Command | undefined> {
+    const [command] = await db.select().from(commands).where(eq(commands.id, id));
+    return command || undefined;
+  }
+
+  async createCommand(insertCommand: InsertCommand): Promise<Command> {
+    const [command] = await db
+      .insert(commands)
+      .values({
+        ...insertCommand,
+        connectionId: insertCommand.connectionId ?? null,
+      })
+      .returning();
+    return command;
+  }
+
+  async updateCommandStatus(id: string, status: string): Promise<void> {
+    await db.update(commands)
+      .set({ status })
+      .where(eq(commands.id, id));
+  }
+
+  async updateCommandResult(id: string, result: { output: string; exitCode: number; status: string; executionTime: number; }): Promise<void> {
+    await db.update(commands)
+      .set({
+        ...result,
+        completedAt: new Date(),
+      })
+      .where(eq(commands.id, id));
+  }
+
+  async clearCommandHistory(connectionId?: string): Promise<void> {
+    if (connectionId) {
+      await db.delete(commands).where(eq(commands.connectionId, connectionId));
+    } else {
+      await db.delete(commands);
+    }
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -213,4 +349,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
