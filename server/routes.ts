@@ -316,20 +316,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const startTime = Date.now();
       
       try {
-        const result = await sshKeyService.executeCommand(
-          command.connectionId!,
-          command.generatedCommand,
-          (data) => {
-            // Stream output to WebSocket clients
-            clients.forEach(client => {
-              client.send(JSON.stringify({
-                type: 'output',
-                commandId: id,
-                data: data
-              }));
-            });
+        // Check if connection exists in storage first
+        const connection = await storage.getSSHConnection(command.connectionId!);
+        if (!connection) {
+          throw new Error('SSH connection not found in database');
+        }
+
+        // Try to execute the command, if connection is lost, try to reconnect
+        let result;
+        try {
+          result = await sshKeyService.executeCommand(
+            command.connectionId!,
+            command.generatedCommand,
+            (data) => {
+              // Stream output to WebSocket clients
+              clients.forEach(client => {
+                client.send(JSON.stringify({
+                  type: 'output',
+                  commandId: id,
+                  data: data
+                }));
+              });
+            }
+          );
+        } catch (connectionError) {
+          if (connectionError.message === 'SSH connection not found') {
+            // Try to reconnect
+            console.log('SSH connection lost, attempting to reconnect...');
+            let reconnectSuccess = false;
+            
+            if (process.env.SSH_AUTH_SOCK) {
+              console.log('Attempting SSH agent reconnection...');
+              reconnectSuccess = await sshKeyService.connectWithAgent(connection);
+            }
+            
+            if (!reconnectSuccess) {
+              console.log('SSH agent reconnection failed, trying private key...');
+              const ec2PrivateKeyPath = `${process.env.HOME}/.ssh/ec2key.pem`;
+              reconnectSuccess = await sshKeyService.connectWithPrivateKey(connection, ec2PrivateKeyPath);
+            }
+
+            if (reconnectSuccess) {
+              console.log('Reconnection successful, retrying command execution...');
+              // Retry the command execution
+              result = await sshKeyService.executeCommand(
+                command.connectionId!,
+                command.generatedCommand,
+                (data) => {
+                  // Stream output to WebSocket clients
+                  clients.forEach(client => {
+                    client.send(JSON.stringify({
+                      type: 'output',
+                      commandId: id,
+                      data: data
+                    }));
+                  });
+                }
+              );
+            } else {
+              throw new Error('SSH connection lost and reconnection failed. Please reconnect manually.');
+            }
+          } else {
+            throw connectionError;
           }
-        );
+        }
 
         const executionTime = Date.now() - startTime;
         const status = result.exitCode === 0 ? 'success' : 'error';

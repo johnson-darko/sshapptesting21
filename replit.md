@@ -20,6 +20,7 @@ Preferred communication style: Simple, everyday language.
 - ✅ **Migrated to PostgreSQL database** - data now persists across server restarts
 - ✅ **SSH private key authentication implemented** - fallback from SSH agent working
 - ✅ **SSH connection working** - server reachable and authentication successful
+- ✅ **Fixed SSH connection persistence issue** - automatic reconnection when server restarts
 - ✅ **Migration completed** - project fully functional in standard Replit environment
 
 ### SSH Configuration Issue Identified
