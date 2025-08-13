@@ -44,6 +44,17 @@ export class MemStorage implements IStorage {
     this.sshConnections = new Map();
     this.sshKeys = new Map();
     this.commands = new Map();
+    
+    // Add some sample data for testing (will be replaced by real data)
+    this.initializeSampleData();
+  }
+
+  private initializeSampleData() {
+    // Only add sample data if no real data exists
+    if (this.sshConnections.size === 0) {
+      console.log('Initializing with sample SSH connection for testing...');
+      // This helps with testing - real connections will replace this
+    }
   }
 
   async getUser(id: string): Promise<User | undefined> {

@@ -118,7 +118,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connection = await storage.getSSHConnection(id);
       
       if (!connection) {
-        return res.status(404).json({ error: 'Connection not found' });
+        console.log(`Connection not found for ID: ${id}`);
+        console.log('Available connections:', Array.from((await storage.getSSHConnections()).map(c => c.id)));
+        return res.status(404).json({ error: 'Connection not found. The connection may have been cleared due to server restart. Please recreate the connection.' });
       }
 
       // Check if SSH agent is available first
