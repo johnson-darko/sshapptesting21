@@ -13,6 +13,7 @@ export interface IStorage {
   getSSHConnection(id: string): Promise<SSHConnection | undefined>;
   createSSHConnection(connection: InsertSSHConnection): Promise<SSHConnection>;
   updateSSHConnectionStatus(id: string, isActive: boolean): Promise<void>;
+  deleteSSHConnection(id: string): Promise<void>;
   
   getSSHKeys(): Promise<SSHKey[]>;
   getSSHKey(id: string): Promise<SSHKey | undefined>;
@@ -83,6 +84,10 @@ export class DatabaseStorage implements IStorage {
     await db.update(sshConnections)
       .set({ isActive })
       .where(eq(sshConnections.id, id));
+  }
+
+  async deleteSSHConnection(id: string): Promise<void> {
+    await db.delete(sshConnections).where(eq(sshConnections.id, id));
   }
 
   async getSSHKeys(): Promise<SSHKey[]> {
@@ -287,6 +292,10 @@ export class MemStorage implements IStorage {
       
       this.sshConnections.set(id, { ...connection, isActive });
     }
+  }
+
+  async deleteSSHConnection(id: string): Promise<void> {
+    this.sshConnections.delete(id);
   }
 
   async getCommands(connectionId?: string): Promise<Command[]> {

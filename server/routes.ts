@@ -158,6 +158,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/ssh-connections/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteSSHConnection(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
   // AI Command Generation
   app.post('/api/generate-command', async (req, res) => {
     try {
