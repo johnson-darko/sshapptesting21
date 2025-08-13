@@ -85,6 +85,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/ssh-connections/test', async (req, res) => {
     try {
       const data = insertSSHConnectionSchema.parse(req.body);
+      
+      // Check if SSH agent is available first
+      if (!process.env.SSH_AUTH_SOCK) {
+        return res.json({ 
+          valid: false, 
+          error: 'SSH agent not available. Please run: eval "$(ssh-agent -s)" && ssh-add ~/.ssh/your_key_name. See SSH_SETUP.md for detailed instructions.' 
+        });
+      }
+
       const testConnection: SSHConnection = {
         ...data,
         id: '',
@@ -94,7 +103,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdAt: new Date(),
       };
       const isValid = await sshKeyService.testConnectionWithKeys(testConnection);
-      res.json({ valid: isValid });
+      res.json({ 
+        valid: isValid,
+        error: isValid ? null : 'Connection test failed. Please ensure your SSH key is loaded in the SSH agent and you have access to the server.'
+      });
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
@@ -109,12 +121,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Connection not found' });
       }
 
+      // Check if SSH agent is available first
+      if (!process.env.SSH_AUTH_SOCK) {
+        return res.status(400).json({ 
+          error: 'SSH agent not available. Please run: eval "$(ssh-agent -s)" && ssh-add ~/.ssh/your_key_name. See SSH_SETUP.md for detailed instructions.' 
+        });
+      }
+
       const success = await sshKeyService.connectWithAgent(connection);
       if (success) {
         await storage.updateSSHConnectionStatus(id, true);
         res.json({ success: true });
       } else {
-        res.status(500).json({ error: 'Failed to connect' });
+        res.status(500).json({ error: 'Failed to connect. Please ensure your SSH key is loaded in the SSH agent and you have access to the server.' });
       }
     } catch (error) {
       res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });

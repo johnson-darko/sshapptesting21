@@ -154,6 +154,13 @@ export class SSHKeyService {
    */
   async connectWithAgent(connection: SSHConnection): Promise<boolean> {
     try {
+      // Check if SSH agent is available
+      const sshAuthSock = process.env.SSH_AUTH_SOCK;
+      if (!sshAuthSock) {
+        console.log('No SSH agent found (SSH_AUTH_SOCK not set)');
+        return false;
+      }
+
       const client = new Client();
       
       return new Promise((resolve, reject) => {
@@ -168,7 +175,8 @@ export class SSHKeyService {
           resolve(true);
         });
 
-        client.on('error', () => {
+        client.on('error', (err) => {
+          console.log('SSH connection error:', err.message);
           clearTimeout(timeout);
           resolve(false);
         });
@@ -176,13 +184,15 @@ export class SSHKeyService {
         // Use SSH agent authentication - this will use keys from user's local SSH agent
         client.connect({
           host: connection.host,
-          port: connection.port,
+          port: connection.port || 22,
           username: connection.username,
-          agent: process.env.SSH_AUTH_SOCK, // SSH agent socket
+          agent: sshAuthSock,
           agentForward: true,
+          readyTimeout: 10000,
         });
       });
     } catch (error) {
+      console.log('SSH agent connection failed:', (error as Error).message);
       return false;
     }
   }
@@ -192,6 +202,13 @@ export class SSHKeyService {
    */
   async testConnectionWithKeys(connection: SSHConnection): Promise<boolean> {
     try {
+      // Check if SSH agent is available
+      const sshAuthSock = process.env.SSH_AUTH_SOCK;
+      if (!sshAuthSock) {
+        console.log('No SSH agent found for testing connection');
+        return false;
+      }
+
       const client = new Client();
       
       return new Promise((resolve) => {
@@ -206,7 +223,8 @@ export class SSHKeyService {
           resolve(true);
         });
 
-        client.on('error', () => {
+        client.on('error', (err) => {
+          console.log('SSH test connection error:', err.message);
           clearTimeout(timeout);
           resolve(false);
         });
@@ -214,12 +232,14 @@ export class SSHKeyService {
         // Test connection using SSH agent (user's local keys)
         client.connect({
           host: connection.host,
-          port: connection.port,
+          port: connection.port || 22,
           username: connection.username,
-          agent: process.env.SSH_AUTH_SOCK,
+          agent: sshAuthSock,
+          readyTimeout: 10000,
         });
       });
-    } catch {
+    } catch (error) {
+      console.log('SSH test connection failed:', (error as Error).message);
       return false;
     }
   }

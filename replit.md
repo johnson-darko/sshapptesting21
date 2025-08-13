@@ -8,6 +8,25 @@ This is an AI-powered terminal assistant application that allows users to execut
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+### Project Migration (August 13, 2025)
+- ✅ Successfully migrated from Replit Agent to standard Replit environment
+- ✅ Fixed all TypeScript compilation issues
+- ✅ Express server running on port 5000 with Vite frontend integration
+- ✅ WebSocket connections working for real-time terminal output
+- ✅ All API endpoints responding correctly
+- ✅ Added comprehensive SSH agent setup documentation (SSH_SETUP.md)
+- ⚠️ SSH agent configuration required for remote server connections
+
+### SSH Configuration Issue Identified
+The SSH connection error is due to missing SSH agent configuration in the Replit environment. Users need to:
+1. Run `eval "$(ssh-agent -s)"` to start SSH agent
+2. Add SSH keys using `ssh-add ~/.ssh/key_name`
+3. Ensure public keys are deployed to target servers
+
+This is normal for Replit environments and documented in SSH_SETUP.md.
+
 ## System Architecture
 
 ### Frontend Architecture
