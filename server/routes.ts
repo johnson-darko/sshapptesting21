@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { sshService } from "./services/ssh";
 import { sshKeyService } from "./services/ssh-key";
 import { aiService } from "./services/ai";
-import { insertSSHConnectionSchema, insertSSHKeySchema, insertCommandSchema } from "@shared/schema";
+import { insertSSHConnectionSchema, insertSSHKeySchema, insertCommandSchema, type SSHConnection } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -359,7 +359,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           client.send(JSON.stringify({
             type: 'error',
             commandId: id,
-            error: error.message
+            error: error instanceof Error ? error.message : 'Unknown error'
           }));
         });
 
