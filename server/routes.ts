@@ -184,10 +184,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Quick Actions - Categorized Commands
+  app.get('/api/quick-actions/categories', async (req, res) => {
+    try {
+      const { quickActionsService } = await import('./services/quick-actions');
+      const categories = quickActionsService.getCategories();
+      res.json(categories);
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  app.get('/api/quick-actions/categories/:categoryId', async (req, res) => {
+    try {
+      const { categoryId } = req.params;
+      const { quickActionsService } = await import('./services/quick-actions');
+      const category = quickActionsService.getCategory(categoryId);
+      
+      if (!category) {
+        return res.status(404).json({ error: 'Category not found' });
+      }
+      
+      res.json(category);
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  app.get('/api/quick-actions/categories/:categoryId/sections/:sectionId', async (req, res) => {
+    try {
+      const { categoryId, sectionId } = req.params;
+      const { quickActionsService } = await import('./services/quick-actions');
+      const section = quickActionsService.getSection(categoryId, sectionId);
+      
+      if (!section) {
+        return res.status(404).json({ error: 'Section not found' });
+      }
+      
+      res.json(section);
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  app.get('/api/quick-actions/categories/:categoryId/sections/:sectionId/commands/:commandId', async (req, res) => {
+    try {
+      const { categoryId, sectionId, commandId } = req.params;
+      const { quickActionsService } = await import('./services/quick-actions');
+      const command = quickActionsService.getCommand(categoryId, sectionId, commandId);
+      
+      if (!command) {
+        return res.status(404).json({ error: 'Command not found' });
+      }
+      
+      res.json(command);
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  // Auto-detect existing items for user inputs
+  app.post('/api/quick-actions/auto-detect', async (req, res) => {
+    try {
+      const { command } = req.body;
+      
+      if (!command) {
+        return res.status(400).json({ error: 'Command required' });
+      }
+
+      // Execute the auto-detect command on the active SSH connection
+      const connections = await storage.getSSHConnections();
+      const activeConnection = connections.find(conn => conn.isActive);
+      
+      if (!activeConnection) {
+        return res.status(400).json({ error: 'No active SSH connection' });
+      }
+
+      const result = await sshKeyService.executeCommand(activeConnection.id, command);
+      
+      // Parse the output into options
+      const options = result.output
+        .split('\n')
+        .filter(line => line.trim() && !line.includes('NAME') && !line.includes('---'))
+        .map(line => line.trim())
+        .slice(0, 20); // Limit to 20 options
+
+      res.json({ options });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  // Legacy support for old quick actions
   app.get('/api/quick-actions/:action', async (req, res) => {
     try {
       const { action } = req.params;
-      const result = aiService.getQuickAction(action);
+      const { quickActionsService } = await import('./services/quick-actions');
+      const result = quickActionsService.getQuickAction(action);
       res.json(result);
     } catch (error) {
       res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });

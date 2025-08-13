@@ -1,0 +1,109 @@
+Perfect! Let’s create the **fully enhanced Docker commands table** for your app. This version will include:
+
+1. **Button/English text** – what the user clicks in the app.
+2. **Explanation** – what the command does.
+3. **Terminal command** – what runs under the hood.
+4. **User input guidance** – auto-suggestions for already existing items, clear instructions for new items, examples, and validation hints.
+
+---
+
+# **Enhanced Docker Commands Mapping for App**
+
+---
+
+## **1. Installing Docker on Server**
+
+| Button / English Text    | Explanation                          | Terminal Command                               | User Input Guidance                                                                        |
+| ------------------------ | ------------------------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Install Docker           | Installs Docker on your Linux server | `sudo yum install docker -y`                   | None                                                                                       |
+| Start Docker service     | Starts Docker daemon                 | `sudo systemctl start docker`                  | None                                                                                       |
+| Enable Docker on boot    | Ensures Docker starts on boot        | `sudo systemctl enable docker`                 | None                                                                                       |
+| Add user to Docker group | Allows running Docker without sudo   | `sudo usermod -a -G docker <USER>`             | `<USER>` = your server username. Example: `ec2-user`                                       |
+| Log out & back in        | Apply group changes                  | `exit`                                         | None                                                                                       |
+| SSH back to server       | Connect to server after logout       | `ssh -i <KEY_FILE> <USER>@<PUBLIC_IP>`         | `<KEY_FILE>` = path to your private key, `<USER>` = server user, `<PUBLIC_IP>` = server IP |
+| Test Docker installation | Check version & test container       | `docker --version`<br>`docker run hello-world` | None                                                                                       |
+
+---
+
+## **2. Docker Images vs Containers**
+
+| Button / English Text   | Explanation                                         | Terminal Command | User Input Guidance |
+| ----------------------- | --------------------------------------------------- | ---------------- | ------------------- |
+| List Docker images      | Shows downloaded images (blueprints)                | `docker images`  | None                |
+| List running containers | Shows running containers                            | `docker ps`      | None                |
+| List all containers     | Shows all containers, including stopped             | `docker ps -a`   | None                |
+| Explanation             | Images = blueprints, containers = running instances | N/A              | None                |
+
+---
+
+## **3. Create Dockerfiles & .dockerignore**
+
+| Button / English Text         | Explanation                      | Terminal Command                                   | User Input Guidance                                                                                                                                                                                                             |
+| ----------------------------- | -------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Create frontend Dockerfile    | Prepares Dockerfile for frontend | `nano <FRONTEND_PATH>/Dockerfile`                  | `<FRONTEND_PATH>` = folder containing frontend code. App pre-fills template: <br>`dockerfile\nFROM node:18\nWORKDIR /app\nCOPY package*.json ./\nRUN npm install\nCOPY . .\nEXPOSE 3000\nCMD ["npm", "start"]\n`                |
+| Create backend Dockerfile     | Prepares Dockerfile for backend  | `nano <BACKEND_PATH>/Dockerfile`                   | `<BACKEND_PATH>` = folder containing backend code. Template: <br>`dockerfile\nFROM python:3.11\nWORKDIR /app\nCOPY requirements.txt ./\nRUN pip install -r requirements.txt\nCOPY . .\nEXPOSE 8000\nCMD ["python", "app.py"]\n` |
+| Create frontend .dockerignore | Exclude unnecessary files        | `nano <FRONTEND_PATH>/.dockerignore`               | Pre-filled template: <br>`node_modules\n.env\n.DS_Store`                                                                                                                                                                        |
+| Create backend .dockerignore  | Exclude unnecessary files        | `nano <BACKEND_PATH>/.dockerignore`                | Pre-filled template: <br>`__pycache__/\n.env\n*.log`                                                                                                                                                                            |
+| Build frontend image          | Build Docker image for frontend  | `docker build -t <FRONTEND_IMAGE> <FRONTEND_PATH>` | `<FRONTEND_IMAGE>` = new image name. Example: `campusmingle-frontend`<br>`<FRONTEND_PATH>` = frontend project folder. App validates folder exists                                                                               |
+| Build backend image           | Build Docker image for backend   | `docker build -t <BACKEND_IMAGE> <BACKEND_PATH>`   | `<BACKEND_IMAGE>` = new image name. Example: `campusmingle-backend`<br>`<BACKEND_PATH>` = backend project folder. App validates folder exists                                                                                   |
+
+---
+
+## **4. Running a Project with Docker**
+
+| Button / English Text    | Explanation                     | Terminal Command                                                                                                            | User Input Guidance                                                                                                                                                   |
+| ------------------------ | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Create Docker network    | Enables container communication | `docker network create <NETWORK_NAME>`                                                                                      | `<NETWORK_NAME>` = new network name. Example: `campusmingle-net`. App checks if already exists                                                                        |
+| Run PostgreSQL container | Start DB container              | `docker run -d --name <DB_CONTAINER> --network <NETWORK_NAME> -e POSTGRES_PASSWORD=<PASS> -e POSTGRES_USER=<USER> postgres` | `<DB_CONTAINER>` = new container name, Example: `campusmingle-db`<br>`<NETWORK_NAME>` = select from existing networks<br>`<PASS>` = DB password<br>`<USER>` = DB user |
+| Wait for DB container    | Gives DB time to start          | `sleep 10`                                                                                                                  | None                                                                                                                                                                  |
+| Run backend container    | Start backend container         | `docker run -d --name <BACKEND_CONTAINER> --network <NETWORK_NAME> <BACKEND_IMAGE>`                                         | `<BACKEND_CONTAINER>` = new container name<br>`<NETWORK_NAME>` = select from networks<br>`<BACKEND_IMAGE>` = select from built images                                 |
+| Run frontend container   | Start frontend container        | `docker run -d --name <FRONTEND_CONTAINER> --network <NETWORK_NAME> -p 3000:3000 <FRONTEND_IMAGE>`                          | `<FRONTEND_CONTAINER>` = new container name<br>`<NETWORK_NAME>` = select network<br>`<FRONTEND_IMAGE>` = select from built images                                     |
+| List containers          | Check all running containers    | `docker ps`                                                                                                                 | None                                                                                                                                                                  |
+| Test containerized app   | Access frontend                 | Open browser: `http://<PUBLIC_IP>:3000`                                                                                     | `<PUBLIC_IP>` = public IP of server                                                                                                                                   |
+| View container logs      | See container output            | `docker logs <CONTAINER_NAME>`                                                                                              | `<CONTAINER_NAME>` = select from running containers                                                                                                                   |
+
+---
+
+## **5. Docker Compose - Multi-Container**
+
+| Button / English Text     | Explanation               | Terminal Command                                                                                                                                                                                        | User Input Guidance                                                                                                                                                                                                                                               |
+| ------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Install Docker Compose    | Installs Docker Compose   | `sudo curl -L "https://github.com/docker/compose/releases/download/<VERSION>/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose`<br>`sudo chmod +x /usr/local/bin/docker-compose` | `<VERSION>` = compose version. Example: `2.20.2`                                                                                                                                                                                                                  |
+| Create docker-compose.yml | Defines multiple services | `nano docker-compose.yml`                                                                                                                                                                               | App pre-fills template. User can modify service names, ports, build paths. Example: <br>`yaml\nversion: '3'\nservices:\n  backend:\n    build: ./backend\n    ports:\n      - "8000:8000"\n  frontend:\n    build: ./frontend\n    ports:\n      - "3000:3000"\n` |
+| Start all services        | Launch containers         | `docker-compose up -d`                                                                                                                                                                                  | None                                                                                                                                                                                                                                                              |
+| Stop all services         | Stop containers           | `docker-compose down`                                                                                                                                                                                   | None                                                                                                                                                                                                                                                              |
+| Check status              | See running containers    | `docker-compose ps`                                                                                                                                                                                     | None                                                                                                                                                                                                                                                              |
+| View combined logs        | Logs for all services     | `docker-compose logs -f`                                                                                                                                                                                | None                                                                                                                                                                                                                                                              |
+| Scale services            | Increase replicas         | `docker-compose up -d --scale <SERVICE>=<N>`                                                                                                                                                            | `<SERVICE>` = select service name<br>`<N>` = number of replicas                                                                                                                                                                                                   |
+| Update & restart services | Apply changes             | `docker-compose up -d --build`                                                                                                                                                                          | None                                                                                                                                                                                                                                                              |
+
+---
+
+## **6. Push Images to AWS ECR**
+
+| Button / English Text                  | Explanation                         | Terminal Command                                                                      | User Input Guidance                                                                                                                      |                                                           |
+| -------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Create ECR registry                    | Creates repository                  | `aws ecr create-repository --repository-name <NAME> --region <REGION>`                | `<NAME>` = new repo name<br>`<REGION>` = AWS region, e.g., `us-east-2`                                                                   |                                                           |
+| Get login token                        | Login Docker to AWS ECR             | \`aws ecr get-login-password --region <REGION>                                        | docker login --username AWS --password-stdin \<AWS\_ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com\`                                            | `<REGION>` = AWS region, `<AWS_ACCOUNT>` = AWS account ID |
+| Tag frontend image                     | Tag image for registry              | `docker tag <LOCAL_IMAGE> <AWS_ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/<REPO>:latest` | `<LOCAL_IMAGE>` = select built frontend image<br>`<AWS_ACCOUNT>` = AWS account ID<br>`<REGION>` = AWS region<br>`<REPO>` = ECR repo name |                                                           |
+| Tag backend image                      | Tag image for registry              | `docker tag <LOCAL_IMAGE> <AWS_ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/<REPO>:latest` | `<LOCAL_IMAGE>` = select backend image                                                                                                   |                                                           |
+| Push frontend image                    | Push to AWS                         | `docker push <AWS_ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/<REPO>:latest`              | Select previously tagged image                                                                                                           |                                                           |
+| Push backend image                     | Push to AWS                         | `docker push <AWS_ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/<REPO>:latest`              | Select previously tagged image                                                                                                           |                                                           |
+| Verify pushed images                   | Confirm images                      | `aws ecr list-images --repository-name <REPO>`                                        | `<REPO>` = repo name                                                                                                                     |                                                           |
+| Update docker-compose.yml for registry | Replace local build with ECR images | `nano docker-compose.yml`                                                             | App pre-fills updated image tags for backend/frontend                                                                                    |                                                           |
+| Restart services with registry images  | Run containers from registry        | `docker-compose down`<br>`docker-compose up -d`                                       | None                                                                                                                                     |                                                           |
+
+---
+
+✅ **Key Features in this Version**:
+
+1. Auto-suggests **existing items** (networks, images, containers).
+2. Explains **new inputs clearly** with examples.
+3. Pre-fills **Dockerfiles, .dockerignore, docker-compose.yml** with templates.
+4. Fully usable for **juniors (learning)** and **seniors (execution)**.
+
+---
+
+Next step could be to **draw the visual workflow diagram** for this entire app, showing **button click → explanation → input → execution → output/logs**.
+
+Do you want me to create that diagram now?

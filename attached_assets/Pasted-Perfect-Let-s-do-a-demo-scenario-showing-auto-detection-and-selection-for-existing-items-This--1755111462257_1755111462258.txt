@@ -1,0 +1,122 @@
+Perfect! Let’s do a **demo scenario showing auto-detection and selection for existing items**. This shows how the app can guide the user without requiring guesswork.
+
+---
+
+## **Scenario:** User wants to run the backend container after everything has been built and the network created
+
+---
+
+### **Step 1: User clicks “Run Backend Container” button**
+
+**App explanation:**
+
+> “We will start the backend container and connect it to your existing Docker network.
+> You can select from existing networks and images that were already created.”
+
+---
+
+### **Step 2: App auto-detects existing items**
+
+**Auto-detected networks:**
+
+```text
+Available Docker networks:
+1. campusmingle-net
+2. bridge
+3. host
+Select network [1-3]:
+```
+
+**Auto-detected images:**
+
+```text
+Available Docker images:
+1. campusmingle-backend
+2. campusmingle-frontend
+3. postgres
+Select image [1-3]:
+```
+
+---
+
+### **Step 3: App prompts user input**
+
+| Input                 | Guidance                                                           |
+| --------------------- | ------------------------------------------------------------------ |
+| `<BACKEND_CONTAINER>` | Name for the new backend container. Example: `backend_app`         |
+| `<NETWORK_NAME>`      | Select from the list of existing networks detected by the app      |
+| `<BACKEND_IMAGE>`     | Select from the list of existing Docker images detected by the app |
+
+**User selects / enters:**
+
+```
+BACKEND_CONTAINER = backend_app
+NETWORK_NAME = campusmingle-net  (select option 1)
+BACKEND_IMAGE = campusmingle-backend  (select option 1)
+```
+
+---
+
+### **Step 4: App executes command**
+
+```bash
+docker run -d --name backend_app --network campusmingle-net backend_app
+```
+
+**App output:**
+
+```
+Container backend_app started successfully
+```
+
+---
+
+### **Step 5: Viewing logs for auto-detected container**
+
+**App explanation:**
+
+> “You can check the logs of your running backend container to confirm it started correctly.”
+
+**App shows list of running containers (auto-detected):**
+
+```text
+Running containers:
+1. frontend_app
+2. backend_app
+Select container to view logs [1-2]:
+```
+
+**User selects:**
+
+```
+2
+```
+
+**Command executed:**
+
+```bash
+docker logs -f backend_app
+```
+
+**App output:**
+
+```
+> backend_app started on port 8000
+> Connected to database postgres
+```
+
+---
+
+### ✅ **Key Features in This Scenario**
+
+1. **App auto-detects existing networks, images, and containers**.
+2. **User chooses from a list**, no need to remember names.
+3. **New items still require input**, with clear instructions and examples.
+4. **Prevents errors** from typos or incorrect values.
+5. **Maintains learning environment** for juniors, while being fast for seniors.
+
+---
+
+If you want, I can **combine both scenarios** (new inputs + existing items) into a **full step-by-step Docker workflow demo**, showing the **complete experience of a user in the app**.
+
+Do you want me to do that next?
