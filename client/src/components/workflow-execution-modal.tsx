@@ -45,6 +45,21 @@ export default function WorkflowExecutionModal({
   const [isDetecting, setIsDetecting] = useState(false);
   const executionRef = useRef<{ cancelled: boolean }>({ cancelled: false });
 
+  // Reset state when modal opens/closes
+  useEffect(() => {
+    if (isOpen && workflow) {
+      setVariables({});
+      setIsExecuting(false);
+      setIsPaused(false);
+      setCurrentStep(0);
+      setExecutionLogs([]);
+      setExecutionId(null);
+      setAutoDetectedValues({});
+      setIsDetecting(false);
+      executionRef.current.cancelled = false;
+    }
+  }, [isOpen, workflow?.id]);
+
   if (!workflow) return null;
 
   // Extract variables from workflow steps
@@ -65,7 +80,7 @@ export default function WorkflowExecutionModal({
 
   // Auto-detection functions
   const autoDetectValues = async () => {
-    if (!activeConnection || !workflow) return;
+    if (!activeConnection || !workflow || !isOpen) return;
     
     setIsDetecting(true);
     const detected: Record<string, string> = {};
@@ -203,10 +218,14 @@ export default function WorkflowExecutionModal({
 
   // Auto-detect values when workflow changes
   useEffect(() => {
-    if (workflow && activeConnection && workflowVariables.length > 0) {
-      autoDetectValues();
+    if (isOpen && workflow && activeConnection && workflowVariables.length > 0) {
+      // Small delay to ensure modal is rendered
+      const timer = setTimeout(() => {
+        autoDetectValues();
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [workflow?.id, activeConnection?.id]);
+  }, [isOpen, workflow?.id, activeConnection?.id]);
 
   // Execute workflow step by step
   const executeWorkflowMutation = useMutation({
@@ -316,7 +335,7 @@ export default function WorkflowExecutionModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] bg-gray-900 border-gray-700 text-white">
+      <DialogContent className="max-w-3xl max-h-[90vh] bg-gray-900 border-gray-700 text-white overflow-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30">
@@ -329,7 +348,7 @@ export default function WorkflowExecutionModal({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-6 max-h-[70vh] overflow-auto pr-2">
           {/* Requirements Check */}
           {workflow.requirements && (workflow.requirements as string[]).length > 0 && (
             <div className="space-y-2">
@@ -388,8 +407,8 @@ export default function WorkflowExecutionModal({
                     </Label>
                     <Input
                       id={variable}
-                      placeholder={autoDetectedValues[variable] || `Enter ${variable}`}
-                      value={variables[variable] || ''}
+                      placeholder={autoDetectedValues[variable] || `Enter ${variable.replace(/_/g, ' ')}`}
+                      value={variables[variable] || autoDetectedValues[variable] || ''}
                       onChange={(e) => setVariables(prev => ({ ...prev, [variable]: e.target.value }))}
                       className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
                     />
@@ -513,7 +532,7 @@ export default function WorkflowExecutionModal({
               ) : (
                 <Button 
                   onClick={handleExecute}
-                  disabled={workflowVariables.some(v => !variables[v]) || !activeConnection}
+                  disabled={workflowVariables.some(v => !(variables[v] || autoDetectedValues[v])) || !activeConnection}
                   className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
                 >
                   <Play className="w-4 h-4 mr-2" />
