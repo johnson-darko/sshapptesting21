@@ -24,8 +24,12 @@ interface UserInputValues {
 }
 
 export default function QuickActionsPanel({ activeConnection, onCommandCreated }: QuickActionsPanelProps) {
-  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
+    'containerization-docker': true // Default first category open
+  });
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    'docker-installation': true // Default first section open
+  });
   const [userInputs, setUserInputs] = useState<Record<string, UserInputValues>>({});
   const [autoDetectOptions, setAutoDetectOptions] = useState<Record<string, string[]>>({});
   const { toast } = useToast();
@@ -85,7 +89,22 @@ export default function QuickActionsPanel({ activeConnection, onCommandCreated }
   });
 
   const toggleCategory = (categoryId: string) => {
-    setOpenCategories(prev => ({ ...prev, [categoryId]: !prev[categoryId] }));
+    setOpenCategories(prev => {
+      const newState = { ...prev, [categoryId]: !prev[categoryId] };
+      
+      // If opening a category, also open its first section by default
+      if (newState[categoryId] && categories.length > 0) {
+        const category = categories.find(c => c.id === categoryId);
+        if (category && category.sections.length > 0) {
+          setOpenSections(prevSections => ({
+            ...prevSections,
+            [category.sections[0].id]: true
+          }));
+        }
+      }
+      
+      return newState;
+    });
   };
 
   const toggleSection = (sectionId: string) => {
@@ -202,7 +221,7 @@ export default function QuickActionsPanel({ activeConnection, onCommandCreated }
               onOpenChange={() => toggleCategory(category.id)}
             >
               <CollapsibleTrigger asChild>
-                <CardHeader className="cursor-pointer hover:bg-surface-light transition-colors p-3">
+                <CardHeader className="cursor-pointer hover:bg-green-500/20 transition-colors p-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <div className="text-lg">{category.icon}</div>
@@ -229,7 +248,7 @@ export default function QuickActionsPanel({ activeConnection, onCommandCreated }
                         onOpenChange={() => toggleSection(section.id)}
                       >
                         <CollapsibleTrigger asChild>
-                          <CardHeader className="cursor-pointer hover:bg-surface transition-colors p-2">
+                          <CardHeader className="cursor-pointer hover:bg-green-500/20 transition-colors p-2">
                             <div className="flex items-center justify-between">
                               <div>
                                 <CardTitle className="text-sm">{section.name}</CardTitle>
