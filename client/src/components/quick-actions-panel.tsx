@@ -24,12 +24,8 @@ interface UserInputValues {
 }
 
 export default function QuickActionsPanel({ activeConnection, onCommandCreated }: QuickActionsPanelProps) {
-  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
-    'containerization-docker': true // Default first category open
-  });
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    'docker-installation': true // Default first section open
-  });
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [userInputs, setUserInputs] = useState<Record<string, UserInputValues>>({});
   const [autoDetectOptions, setAutoDetectOptions] = useState<Record<string, string[]>>({});
   const { toast } = useToast();
@@ -251,8 +247,8 @@ export default function QuickActionsPanel({ activeConnection, onCommandCreated }
                           <CardHeader className="cursor-pointer hover:bg-green-500/20 transition-colors p-2">
                             <div className="flex items-center justify-between">
                               <div>
-                                <CardTitle className="text-sm">{section.name}</CardTitle>
-                                <CardDescription className="text-xs">{section.description}</CardDescription>
+                                <CardTitle className="text-sm text-white">{section.name}</CardTitle>
+                                <CardDescription className="text-xs text-gray-300">{section.description}</CardDescription>
                               </div>
                               {openSections[section.id] ? (
                                 <ChevronDown className="w-3 h-3" />
@@ -272,7 +268,7 @@ export default function QuickActionsPanel({ activeConnection, onCommandCreated }
                                     <div className="flex items-start justify-between">
                                       <div className="flex-1">
                                         <div className="flex items-center gap-1 mb-1">
-                                          <h4 className="text-sm font-medium">{command.buttonText}</h4>
+                                          <h4 className="text-sm font-medium text-white">{command.buttonText}</h4>
                                           {command.riskLevel && (
                                             <Badge variant={getRiskBadgeVariant(command.riskLevel)} className="text-xs px-1 py-0">
                                               {getRiskIcon(command.riskLevel)}
@@ -280,8 +276,8 @@ export default function QuickActionsPanel({ activeConnection, onCommandCreated }
                                             </Badge>
                                           )}
                                         </div>
-                                        <p className="text-xs text-text-secondary mb-2">{command.explanation}</p>
-                                        <code className="text-xs bg-surface-light p-1 rounded font-mono block">
+                                        <p className="text-xs text-gray-300 mb-2">{command.explanation}</p>
+                                        <code className="text-xs bg-surface-light p-1 rounded font-mono block text-white">
                                           {processCommand(command)}
                                         </code>
                                       </div>
@@ -292,7 +288,7 @@ export default function QuickActionsPanel({ activeConnection, onCommandCreated }
                                         {command.userInputs.map((input) => (
                                           <div key={input.name} className="space-y-1">
                                             <div className="flex items-center justify-between">
-                                              <Label className="text-xs font-medium">{input.description}</Label>
+                                              <Label className="text-xs font-medium text-white">{input.description}</Label>
                                               {input.autoDetect && (
                                                 <Button
                                                   variant="outline"
@@ -341,7 +337,7 @@ export default function QuickActionsPanel({ activeConnection, onCommandCreated }
                                               />
                                             )}
                                             
-                                            <p className="text-xs text-text-secondary">
+                                            <p className="text-xs text-gray-300">
                                               Example: {input.example}
                                             </p>
                                           </div>
