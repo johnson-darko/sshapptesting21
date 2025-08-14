@@ -209,8 +209,40 @@ export class SSHKeyService {
       if (process.env.SSH_PRIVATE_KEY) {
         console.log('Using SSH private key from environment variable');
         // Environment variables store keys as strings, need to handle line breaks
-        const envKey = process.env.SSH_PRIVATE_KEY.replace(/\\n/g, '\n');
-        privateKey = Buffer.from(envKey);
+        let envKey = process.env.SSH_PRIVATE_KEY;
+        
+        // Handle different line break formats
+        if (envKey.includes('\\n')) {
+          envKey = envKey.replace(/\\n/g, '\n');
+        }
+        
+        // Ensure proper key format with line breaks
+        if (!envKey.includes('\n')) {
+          // Split the key into proper lines
+          // First, extract the header, body, and footer
+          const beginMatch = envKey.match(/-----BEGIN ([^-]+)-----/);
+          const endMatch = envKey.match(/-----END ([^-]+)-----/);
+          
+          if (beginMatch && endMatch) {
+            const header = beginMatch[0];
+            const footer = endMatch[0];
+            const keyBody = envKey.replace(header, '').replace(footer, '').trim();
+            
+            // Split key body into 64-character lines
+            const lines = [];
+            for (let i = 0; i < keyBody.length; i += 64) {
+              lines.push(keyBody.substring(i, i + 64));
+            }
+            
+            envKey = header + '\n' + lines.join('\n') + '\n' + footer;
+          }
+        }
+        
+        // Remove any double line breaks
+        envKey = envKey.replace(/\n\n+/g, '\n');
+        
+        console.log('SSH private key loaded and formatted successfully');
+        privateKey = Buffer.from(envKey.trim());
       } 
       // Fallback to reading from file if path provided
       else if (privateKeyPath) {
@@ -245,13 +277,26 @@ export class SSHKeyService {
         });
 
         // Use private key authentication
-        client.connect({
-          host: connection.host,
-          port: connection.port || 22,
-          username: connection.username,
-          privateKey,
-          readyTimeout: 10000,
-        });
+        try {
+          client.connect({
+            host: connection.host,
+            port: connection.port || 22,
+            username: connection.username,
+            privateKey,
+            passphrase: '', // Empty passphrase for unencrypted keys
+            readyTimeout: 10000,
+            algorithms: {
+              kex: ['diffie-hellman-group14-sha256', 'ecdh-sha2-nistp256', 'ecdh-sha2-nistp384', 'ecdh-sha2-nistp521'],
+              cipher: ['aes128-ctr', 'aes192-ctr', 'aes256-ctr'],
+              serverHostKey: ['rsa-sha2-512', 'rsa-sha2-256', 'ssh-rsa', 'ssh-dss'],
+              hmac: ['hmac-sha2-256', 'hmac-sha2-512', 'hmac-sha1']
+            }
+          });
+        } catch (connectError) {
+          console.log('SSH connect configuration error:', connectError);
+          clearTimeout(timeout);
+          resolve(false);
+        }
       });
     } catch (error) {
       console.log('SSH private key connection failed:', (error as Error).message);
