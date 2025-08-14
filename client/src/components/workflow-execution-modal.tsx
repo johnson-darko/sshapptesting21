@@ -222,21 +222,7 @@ export default function WorkflowExecutionModal({
     }
   }, [isOpen, workflow?.id, activeConnection?.id]);
 
-  // Early return after all hooks are declared
-  if (!workflow) {
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-md max-h-[90vh] bg-gray-900 border-gray-700 text-white">
-          <DialogHeader>
-            <DialogTitle>No Workflow Selected</DialogTitle>
-          </DialogHeader>
-          <p className="text-gray-400">Please select a workflow to execute.</p>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // Execute workflow step by step
+  // Execute workflow step by step - MUST be declared before any early returns
   const executeWorkflowMutation = useMutation({
     mutationFn: async (command: string) => {
       if (!activeConnection) throw new Error('No active connection');
@@ -249,6 +235,20 @@ export default function WorkflowExecutionModal({
       });
     }
   });
+
+  // Early return after ALL hooks are declared
+  if (!workflow) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-md max-h-[90vh] bg-gray-900 border-gray-700 text-white">
+          <DialogHeader>
+            <DialogTitle>No Workflow Selected</DialogTitle>
+          </DialogHeader>
+          <p className="text-gray-400">Please select a workflow to execute.</p>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   const handleExecute = async () => {
     if (!workflow || !activeConnection) {
