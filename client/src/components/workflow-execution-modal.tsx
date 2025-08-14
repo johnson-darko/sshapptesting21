@@ -201,7 +201,7 @@ export default function WorkflowExecutionModal({
 
   const executeDetectionCommand = async (command: string): Promise<string | null> => {
     try {
-      const result = await apiRequest(`/api/commands`, {
+      const result = await apiRequest('/api/commands', {
         method: 'POST',
         body: {
           connectionId: activeConnection!.id,
@@ -210,7 +210,7 @@ export default function WorkflowExecutionModal({
           aiExplanation: 'Detecting project values'
         }
       });
-      return result.output?.trim() || null;
+      return (result as any).output?.trim() || null;
     } catch {
       return null;
     }
@@ -232,7 +232,7 @@ export default function WorkflowExecutionModal({
     mutationFn: async (command: string) => {
       if (!activeConnection) throw new Error('No active connection');
       
-      return await apiRequest(`/api/commands`, {
+      return await apiRequest('/api/commands', {
         method: 'POST',
         body: {
           connectionId: activeConnection.id,
@@ -354,7 +354,7 @@ export default function WorkflowExecutionModal({
             <div className="space-y-2">
               <Label className="text-sm font-medium">Required Tools</Label>
               <div className="flex flex-wrap gap-2">
-                {(workflow.requirements as string[]).map((req) => (
+                {(workflow.requirements as string[]).map((req: string) => (
                   <Badge key={req} variant="outline" className="border-yellow-500/30 text-yellow-400">
                     <AlertTriangle className="w-3 h-3 mr-1" />
                     {req}

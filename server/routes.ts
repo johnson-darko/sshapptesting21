@@ -298,13 +298,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check for duplicate actions before execution
+  app.post('/api/commands/check-duplicate', async (req, res) => {
+    try {
+      const { connectionId, command } = req.body;
+      
+      if (!connectionId || !command) {
+        return res.status(400).json({ error: 'Connection ID and command required' });
+      }
+
+      const { getDuplicateDetectionService } = await import('./services/duplicate-detection');
+      const duplicateDetectionService = await getDuplicateDetectionService();
+      const result = await duplicateDetectionService.checkForDuplicates(connectionId, command);
+      
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
   app.post('/api/commands/:id/execute', async (req, res) => {
     try {
       const { id } = req.params;
+      const { skipDuplicateCheck } = req.body;
       const command = await storage.getCommand(id);
       
       if (!command) {
         return res.status(404).json({ error: 'Command not found' });
+      }
+
+      // Check for duplicates unless explicitly skipped
+      if (!skipDuplicateCheck) {
+        try {
+          const { getDuplicateDetectionService } = await import('./services/duplicate-detection');
+          const duplicateDetectionService = await getDuplicateDetectionService();
+          const duplicateCheck = await duplicateDetectionService.checkForDuplicates(
+            command.connectionId!, 
+            command.generatedCommand
+          );
+          
+          if (duplicateCheck.isDuplicate) {
+            return res.json({
+              success: false,
+              isDuplicate: true,
+              duplicateMessage: duplicateCheck.message,
+              suggestions: duplicateCheck.suggestions,
+              requiresConfirmation: true
+            });
+          }
+        } catch (duplicateError) {
+          console.log('Duplicate detection failed:', duplicateError);
+          // Continue with execution if duplicate detection fails
+        }
       }
 
       // Update status to running
