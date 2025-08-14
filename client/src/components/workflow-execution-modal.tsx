@@ -60,8 +60,6 @@ export default function WorkflowExecutionModal({
     }
   }, [isOpen, workflow?.id]);
 
-  if (!workflow) return null;
-
   // Extract variables from workflow steps
   const extractVariables = (steps: any[]) => {
     const vars = new Set<string>();
@@ -76,7 +74,7 @@ export default function WorkflowExecutionModal({
     return Array.from(vars);
   };
 
-  const workflowVariables = extractVariables(workflow.steps as any[]);
+  const workflowVariables = workflow ? extractVariables(workflow.steps as any[] || []) : [];
 
   // Auto-detection functions
   const autoDetectValues = async () => {
@@ -201,14 +199,11 @@ export default function WorkflowExecutionModal({
 
   const executeDetectionCommand = async (command: string): Promise<string | null> => {
     try {
-      const result = await apiRequest('/api/commands', {
-        method: 'POST',
-        body: {
-          connectionId: activeConnection!.id,
-          plainTextInput: 'Auto-detection command',
-          generatedCommand: command,
-          aiExplanation: 'Detecting project values'
-        }
+      const result = await apiRequest('/api/commands', 'POST', {
+        connectionId: activeConnection!.id,
+        plainTextInput: 'Auto-detection command',
+        generatedCommand: command,
+        aiExplanation: 'Detecting project values'
       });
       return (result as any).output?.trim() || null;
     } catch {
@@ -227,19 +222,30 @@ export default function WorkflowExecutionModal({
     }
   }, [isOpen, workflow?.id, activeConnection?.id]);
 
+  // Early return after all hooks are declared
+  if (!workflow) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-md max-h-[90vh] bg-gray-900 border-gray-700 text-white">
+          <DialogHeader>
+            <DialogTitle>No Workflow Selected</DialogTitle>
+          </DialogHeader>
+          <p className="text-gray-400">Please select a workflow to execute.</p>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   // Execute workflow step by step
   const executeWorkflowMutation = useMutation({
     mutationFn: async (command: string) => {
       if (!activeConnection) throw new Error('No active connection');
       
-      return await apiRequest('/api/commands', {
-        method: 'POST',
-        body: {
-          connectionId: activeConnection.id,
-          plainTextInput: `Workflow step: ${command}`,
-          generatedCommand: command,
-          aiExplanation: `Executing workflow step`
-        }
+      return await apiRequest('/api/commands', 'POST', {
+        connectionId: activeConnection.id,
+        plainTextInput: `Workflow step: ${command}`,
+        generatedCommand: command,
+        aiExplanation: `Executing workflow step`
       });
     }
   });
@@ -357,7 +363,7 @@ export default function WorkflowExecutionModal({
                 {(workflow.requirements as string[]).map((req: string) => (
                   <Badge key={req} variant="outline" className="border-yellow-500/30 text-yellow-400">
                     <AlertTriangle className="w-3 h-3 mr-1" />
-                    {req}
+                    {String(req)}
                   </Badge>
                 ))}
               </div>
