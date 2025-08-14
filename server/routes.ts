@@ -123,16 +123,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Connection not found. The connection may have been cleared due to server restart. Please recreate the connection.' });
       }
 
-      // Try SSH agent first, fallback to private key for testing
+      // Try SSH_PRIVATE_KEY env var first, then SSH agent, then fallback to private key file
       let success = false;
       
-      if (process.env.SSH_AUTH_SOCK) {
-        console.log('Attempting SSH agent connection...');
+      if (process.env.SSH_PRIVATE_KEY) {
+        console.log('Attempting connection with SSH_PRIVATE_KEY environment variable...');
+        success = await sshKeyService.connectWithPrivateKey(connection);
+      }
+      
+      if (!success && process.env.SSH_AUTH_SOCK) {
+        console.log('SSH_PRIVATE_KEY not available or failed, trying SSH agent...');
         success = await sshKeyService.connectWithAgent(connection);
       }
       
       if (!success) {
-        console.log('SSH agent connection failed or not available, trying private key...');
+        console.log('SSH agent connection failed or not available, trying private key file...');
         const ec2PrivateKeyPath = `${process.env.HOME}/.ssh/ec2key.pem`;
         success = await sshKeyService.connectWithPrivateKey(connection, ec2PrivateKeyPath);
       }
@@ -390,13 +395,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log('SSH connection lost, attempting to reconnect...');
             let reconnectSuccess = false;
             
-            if (process.env.SSH_AUTH_SOCK) {
-              console.log('Attempting SSH agent reconnection...');
+            if (process.env.SSH_PRIVATE_KEY) {
+              console.log('Attempting reconnection with SSH_PRIVATE_KEY environment variable...');
+              reconnectSuccess = await sshKeyService.connectWithPrivateKey(connection);
+            }
+            
+            if (!reconnectSuccess && process.env.SSH_AUTH_SOCK) {
+              console.log('SSH_PRIVATE_KEY reconnection failed, trying SSH agent...');
               reconnectSuccess = await sshKeyService.connectWithAgent(connection);
             }
             
             if (!reconnectSuccess) {
-              console.log('SSH agent reconnection failed, trying private key...');
+              console.log('SSH agent reconnection failed, trying private key file...');
               const ec2PrivateKeyPath = `${process.env.HOME}/.ssh/ec2key.pem`;
               reconnectSuccess = await sshKeyService.connectWithPrivateKey(connection, ec2PrivateKeyPath);
             }

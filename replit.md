@@ -30,6 +30,7 @@ Preferred communication style: Simple, everyday language.
 - ✅ **Duplicate Action Detection** - prevents re-installation and conflicts with intelligent confirmation prompts
 - ✅ **Enhanced Development Tools** - added comprehensive installation commands for Node.js, Python, databases, web servers
 - ✅ **Fixed React hooks errors** - DevOps workflow modals now work properly without crashes
+- ✅ **Added SSH_PRIVATE_KEY environment variable support** - enables secure deployment to Render and other platforms
 
 ### SSH Configuration Issue Identified
 The SSH connection error is due to missing SSH agent configuration in the Replit environment. Users need to:

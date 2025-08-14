@@ -199,11 +199,30 @@ export class SSHKeyService {
   }
 
   /**
-   * Connect to server using private key file (for testing)
+   * Connect to server using private key (from file or environment variable)
    */
-  async connectWithPrivateKey(connection: SSHConnection, privateKeyPath: string): Promise<boolean> {
+  async connectWithPrivateKey(connection: SSHConnection, privateKeyPath?: string): Promise<boolean> {
     try {
-      const privateKey = await fs.readFile(privateKeyPath);
+      let privateKey: Buffer;
+      
+      // First try to get private key from environment variable
+      if (process.env.SSH_PRIVATE_KEY) {
+        console.log('Using SSH private key from environment variable');
+        // Environment variables store keys as strings, need to handle line breaks
+        const envKey = process.env.SSH_PRIVATE_KEY.replace(/\\n/g, '\n');
+        privateKey = Buffer.from(envKey);
+      } 
+      // Fallback to reading from file if path provided
+      else if (privateKeyPath) {
+        console.log('Using SSH private key from file:', privateKeyPath);
+        privateKey = await fs.readFile(privateKeyPath);
+      } 
+      // No private key available
+      else {
+        console.log('No SSH private key available (neither env var nor file path)');
+        return false;
+      }
+
       const client = new Client();
       
       return new Promise((resolve) => {
@@ -215,6 +234,7 @@ export class SSHKeyService {
         client.on('ready', () => {
           clearTimeout(timeout);
           this.connections.set(connection.id, client);
+          console.log('SSH connection established successfully');
           resolve(true);
         });
 
