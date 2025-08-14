@@ -248,7 +248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Auto-detect existing items for user inputs
+  // Auto-detect existing items for user inputs with tool validation
   app.post('/api/quick-actions/auto-detect', async (req, res) => {
     try {
       const { command } = req.body;
@@ -265,13 +265,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'No active SSH connection' });
       }
 
+      // First check if the required tool exists
+      const toolName = command.split(' ')[0]; // Extract the first command (docker, kubectl, etc.)
+      const toolCheckResult = await sshKeyService.executeCommand(activeConnection.id, `which ${toolName} || command -v ${toolName}`);
+      
+      if (!toolCheckResult.success || !toolCheckResult.output.trim()) {
+        return res.json({ 
+          options: [], 
+          missingTool: toolName,
+          message: `${toolName} is not installed on this system. Would you like to install it first?`
+        });
+      }
+
+      // Execute the actual detection command
       const result = await sshKeyService.executeCommand(activeConnection.id, command);
       
-      // Parse the output into options
+      if (!result.success) {
+        return res.json({ 
+          options: [], 
+          error: `Failed to execute ${command}: ${result.output}`
+        });
+      }
+      
+      // Parse the output into options - only return real data
       const options = result.output
         .split('\n')
-        .filter(line => line.trim() && !line.includes('NAME') && !line.includes('---'))
-        .map(line => line.trim())
+        .filter(line => {
+          const trimmed = line.trim();
+          // Filter out empty lines, headers, and common non-data indicators
+          return trimmed && 
+                 !trimmed.includes('NAME') && 
+                 !trimmed.includes('REPOSITORY') &&
+                 !trimmed.includes('---') &&
+                 !trimmed.includes('No such') &&
+                 !trimmed.includes('not found') &&
+                 !trimmed.startsWith('CONTAINER') &&
+                 !trimmed.startsWith('IMAGE ID') &&
+                 trimmed !== 'TAG' &&
+                 trimmed !== 'CREATED' &&
+                 trimmed !== 'SIZE';
+        })
+        .map(line => {
+          // Extract meaningful parts from Docker/Kubernetes output
+          const parts = line.trim().split(/\s+/);
+          if (command.includes('docker images')) {
+            // For docker images, return repository:tag
+            return parts.length >= 2 ? `${parts[0]}:${parts[1]}` : parts[0];
+          } else if (command.includes('docker ps')) {
+            // For docker ps, return container names
+            return parts[parts.length - 1]; // Last column is usually name
+          } else {
+            // For other commands, return the first meaningful part
+            return parts[0];
+          }
+        })
+        .filter(option => option && option !== '<none>' && option !== 'none')
         .slice(0, 20); // Limit to 20 options
 
       res.json({ options });
@@ -317,6 +365,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await duplicateDetectionService.checkForDuplicates(connectionId, command);
       
       res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  // Install missing tools with user confirmation
+  app.post('/api/tools/install', async (req, res) => {
+    try {
+      const { toolName, connectionId, confirmed } = req.body;
+      
+      if (!toolName || !connectionId) {
+        return res.status(400).json({ error: 'Tool name and connection ID required' });
+      }
+
+      if (!confirmed) {
+        return res.status(400).json({ error: 'User confirmation required' });
+      }
+
+      // Get the connection
+      const connection = await storage.getSSHConnection(connectionId);
+      if (!connection) {
+        return res.status(404).json({ error: 'Connection not found' });
+      }
+
+      // Detect package manager and install the tool
+      const installCommands = [
+        `if command -v apt >/dev/null 2>&1; then sudo apt update && sudo apt install -y ${toolName}; fi`,
+        `if command -v yum >/dev/null 2>&1; then sudo yum install -y ${toolName}; fi`,
+        `if command -v dnf >/dev/null 2>&1; then sudo dnf install -y ${toolName}; fi`,
+        `if command -v pacman >/dev/null 2>&1; then sudo pacman -S --noconfirm ${toolName}; fi`
+      ];
+
+      let installSuccess = false;
+      let installOutput = '';
+
+      for (const cmd of installCommands) {
+        const result = await sshKeyService.executeCommand(connectionId, cmd);
+        if (result.success) {
+          installSuccess = true;
+          installOutput = result.output;
+          break;
+        }
+      }
+
+      // Verify installation
+      const verifyResult = await sshKeyService.executeCommand(connectionId, `which ${toolName} || command -v ${toolName}`);
+      const isInstalled = verifyResult.success && verifyResult.output.trim();
+
+      res.json({
+        success: installSuccess && isInstalled,
+        output: installOutput,
+        verified: isInstalled,
+        message: isInstalled ? `${toolName} installed successfully` : `Failed to install ${toolName}`
+      });
     } catch (error) {
       res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }

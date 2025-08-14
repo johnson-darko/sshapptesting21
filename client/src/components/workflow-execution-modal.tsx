@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import ToolInstallationDialog from "./tool-installation-dialog";
 
 import { 
   Play, 
@@ -43,6 +44,8 @@ export default function WorkflowExecutionModal({
   const [executionId, setExecutionId] = useState<string | null>(null);
   const [autoDetectedValues, setAutoDetectedValues] = useState<Record<string, string>>({});
   const [isDetecting, setIsDetecting] = useState(false);
+  const [missingTool, setMissingTool] = useState<{ name: string; connectionId: string } | null>(null);
+  const [showToolDialog, setShowToolDialog] = useState(false);
   const executionRef = useRef<{ cancelled: boolean }>({ cancelled: false });
 
   // Reset state when modal opens/closes
@@ -76,7 +79,7 @@ export default function WorkflowExecutionModal({
 
   const workflowVariables = workflow ? extractVariables(workflow.steps as any[] || []) : [];
 
-  // Auto-detection functions
+  // Enhanced auto-detection with tool validation
   const autoDetectValues = async () => {
     if (!activeConnection || !workflow || !isOpen) return;
     
@@ -84,19 +87,32 @@ export default function WorkflowExecutionModal({
     const detected: Record<string, string> = {};
 
     try {
-      // Auto-detect image name from package.json or current directory
+      // Auto-detect Docker images (only if Docker is installed and has images)
       if (workflowVariables.includes('image_name')) {
         try {
-          const packageResult = await executeDetectionCommand('cat package.json 2>/dev/null | grep "name" | head -1 | sed \'s/.*"name":\\s*"\\([^"]*\\)".*/\\1/\'');
-          if (packageResult) {
-            detected.image_name = packageResult.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+          const dockerCheckResult = await apiRequest('/api/quick-actions/auto-detect', {
+            method: 'POST',
+            body: JSON.stringify({ command: 'docker images --format "{{.Repository}}:{{.Tag}}"' })
+          });
+          
+          if (dockerCheckResult.missingTool) {
+            // Docker is not installed, offer to install it
+            console.log(`${dockerCheckResult.missingTool} is not installed`);
+            setMissingTool({ name: dockerCheckResult.missingTool, connectionId: activeConnection.id });
+            setShowToolDialog(true);
+          } else if (dockerCheckResult.options && dockerCheckResult.options.length > 0) {
+            // Use the first real Docker image found
+            detected.image_name = dockerCheckResult.options[0];
           } else {
-            // Fallback to current directory name
-            const dirResult = await executeDetectionCommand('basename $(pwd)');
-            detected.image_name = dirResult?.toLowerCase().replace(/[^a-z0-9-]/g, '-') || 'my-app';
+            // Docker is installed but no images exist - try package.json name
+            const packageResult = await executeDetectionCommand('cat package.json 2>/dev/null | grep "name" | head -1 | sed \'s/.*"name":\\s*"\\([^"]*\\)".*/\\1/\'');
+            if (packageResult && packageResult.trim()) {
+              detected.image_name = packageResult.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+            }
+            // Don't set a fallback if no real data exists
           }
-        } catch {
-          detected.image_name = 'my-app';
+        } catch (error) {
+          console.log('Failed to auto-detect image_name:', error);
         }
       }
 
@@ -136,18 +152,52 @@ export default function WorkflowExecutionModal({
         }
       }
 
-      // Auto-detect AWS account ID
+      // Auto-detect database name (only if database tools are installed and databases exist)
+      if (workflowVariables.includes('database_name')) {
+        try {
+          // Check for PostgreSQL databases
+          const pgResult = await apiRequest('/api/quick-actions/auto-detect', {
+            method: 'POST',
+            body: JSON.stringify({ command: 'psql -l -t 2>/dev/null | grep -v template | grep -v postgres | awk \'{print $1}\' | grep -v "^$"' })
+          });
+          
+          if (pgResult.missingTool) {
+            console.log(`PostgreSQL tools not installed`);
+          } else if (pgResult.options && pgResult.options.length > 0) {
+            detected.database_name = pgResult.options[0];
+          }
+          
+          // If no PostgreSQL, try MySQL
+          if (!detected.database_name) {
+            const mysqlResult = await apiRequest('/api/quick-actions/auto-detect', {
+              method: 'POST',
+              body: JSON.stringify({ command: 'mysql -e "SHOW DATABASES;" 2>/dev/null | grep -v information_schema | grep -v performance_schema | grep -v mysql | tail -n +2' })
+            });
+            
+            if (mysqlResult.options && mysqlResult.options.length > 0) {
+              detected.database_name = mysqlResult.options[0];
+            }
+          }
+        } catch (error) {
+          console.log('Failed to auto-detect database_name:', error);
+        }
+      }
+
+      // Auto-detect AWS account ID (only if AWS CLI is installed and configured)
       if (workflowVariables.includes('account_id')) {
         try {
-          const accountResult = await executeDetectionCommand(`
-            # Get AWS account ID
-            aws sts get-caller-identity --query Account --output text 2>/dev/null ||
-            # Default placeholder
-            echo "123456789012"
-          `);
-          detected.account_id = accountResult || '123456789012';
-        } catch {
-          detected.account_id = '123456789012';
+          const awsResult = await apiRequest('/api/quick-actions/auto-detect', {
+            method: 'POST',
+            body: JSON.stringify({ command: 'aws sts get-caller-identity --query Account --output text' })
+          });
+          
+          if (awsResult.missingTool) {
+            console.log(`AWS CLI not installed`);
+          } else if (awsResult.options && awsResult.options.length > 0) {
+            detected.account_id = awsResult.options[0];
+          }
+        } catch (error) {
+          console.log('Failed to auto-detect account_id:', error);
         }
       }
 
@@ -549,6 +599,27 @@ export default function WorkflowExecutionModal({
           </div>
         </div>
       </DialogContent>
+      
+      {/* Tool Installation Dialog */}
+      {missingTool && (
+        <ToolInstallationDialog
+          isOpen={showToolDialog}
+          onClose={() => {
+            setShowToolDialog(false);
+            setMissingTool(null);
+          }}
+          toolName={missingTool.name}
+          connectionId={missingTool.connectionId}
+          onInstallComplete={(success) => {
+            if (success) {
+              // Retry auto-detection after successful installation
+              autoDetectValues();
+            }
+            setShowToolDialog(false);
+            setMissingTool(null);
+          }}
+        />
+      )}
     </Dialog>
   );
 }
